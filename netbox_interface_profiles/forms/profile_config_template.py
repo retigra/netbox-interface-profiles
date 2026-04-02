@@ -10,6 +10,7 @@ from utilities.forms.fields import DynamicModelChoiceField, DynamicModelMultiple
 from utilities.forms.rendering import FieldSet
 
 from ..models import InterfaceProfile, ProfileConfigTemplate
+from ..widgets import ProfileNameWidget
 
 
 class ProfileConfigTemplateForm(NetBoxModelForm):
@@ -36,7 +37,10 @@ class ProfileConfigTemplateForm(NetBoxModelForm):
 
     name = forms.CharField(
         label=_("Name"),
-        help_text=_("Unique name for this profile config template."),
+        help_text=_(
+            "Unique name for this profile config template. Use the Generate button to derive it from the scope fields."
+        ),
+        widget=ProfileNameWidget(),
     )
 
     fieldsets = (
