@@ -14,11 +14,11 @@
             .toString()
             .toLowerCase()
             .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")  // strip diacritic accents
-            .replace(/[^a-z0-9\s-]/g, "")     // remove non-alphanumeric (keep spaces and hyphens)
+            .replace(/[\u0300-\u036f]/g, "") // strip diacritic accents
+            .replace(/[^a-z0-9\s-]/g, "") // remove non-alphanumeric (keep spaces and hyphens)
             .trim()
-            .replace(/[\s_]+/g, "-")           // collapse whitespace / underscores to a single hyphen
-            .replace(/-+/g, "-");              // collapse consecutive hyphens
+            .replace(/[\s_]+/g, "-") // collapse whitespace / underscores to a single hyphen
+            .replace(/-+/g, "-"); // collapse consecutive hyphens
     }
 
     /**
@@ -57,15 +57,42 @@
             .join("-");
     }
 
+    /**
+     * Automatically populate the name field if it's empty.
+     * Called when platform or device_type is selected.
+     */
+    function autoPopulateName() {
+        const nameField = document.getElementById("id_name");
+        if (nameField && !nameField.value.trim()) {
+            nameField.value = buildName();
+        }
+    }
+
     document.addEventListener("DOMContentLoaded", function () {
         const btn = document.getElementById("btn-generate-profile-name");
-        if (!btn) return;
+        if (btn) {
+            btn.addEventListener("click", function () {
+                const nameField = document.getElementById("id_name");
+                if (nameField) {
+                    nameField.value = buildName();
+                }
+            });
+        }
 
-        btn.addEventListener("click", function () {
-            const nameField = document.getElementById("id_name");
-            if (nameField) {
-                nameField.value = buildName();
-            }
-        });
+        // Listen for Select2 change events on platform and device_type fields
+        // to automatically populate the name field if it's empty.
+        const platformSelect = document.getElementById("id_platform");
+        const deviceTypeSelect = document.getElementById(
+            "id_device_type",
+        );
+
+        if (platformSelect) {
+            // Select2 fires 'change' event after selection
+            platformSelect.addEventListener("change", autoPopulateName);
+        }
+
+        if (deviceTypeSelect) {
+            deviceTypeSelect.addEventListener("change", autoPopulateName);
+        }
     });
 })();

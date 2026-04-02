@@ -43,7 +43,7 @@ class ProfileConfigTemplate(NetBoxModel):
         verbose_name_plural = "Profile Config Templates"
 
     def __str__(self) -> str:
-        return f"{self.interface_profile} — {self.name}"
+        return f"{self.name}"
 
     def get_absolute_url(self) -> str:
         return reverse("plugins:netbox_interface_profiles:profileconfigtemplate", args=[self.pk])
