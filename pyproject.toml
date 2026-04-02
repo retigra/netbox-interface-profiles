@@ -42,6 +42,7 @@ Tracker = "https://github.com/wouterdebruijn/netbox-interface-profiles/issues"
 [tool.ruff]
 line-length = 120
 target-version = "py312"
+exclude = ["docker/**"]
 
 [tool.ruff.lint]
 select = [
@@ -73,4 +74,4 @@ dev = ["netbox-types==4.5.4.1", "ty>=0.0.20"]
 test = ["bs4>=0.0.2"]
 
 [tool.ty.src]
-exclude = ["build/**", "netbox_interface_profiles/testing/**"]
+exclude = ["build/**", "docker/**", "netbox_interface_profiles/testing/**"]

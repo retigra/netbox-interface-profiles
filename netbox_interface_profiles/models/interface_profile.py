@@ -22,7 +22,7 @@ class InterfaceProfile(NetBoxModel):
         verbose_name_plural = "Interface Profiles"
 
     def __str__(self) -> str:
-        return self.name
+        return str(self.name)
 
     def get_absolute_url(self) -> str:
         return reverse("plugins:netbox_interface_profiles:interfaceprofile", args=[self.pk])
