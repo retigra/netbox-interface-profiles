@@ -1,0 +1,118 @@
+"""
+Test cases for netbox interface profiles models.
+"""
+
+from django.core.exceptions import ValidationError
+
+from ..models import InterfaceProfile
+from ..testing import PluginModelTestCase
+from ..testing.utils import create_tags, get_random_string
+
+
+class InterfaceProfileTestCase(PluginModelTestCase):
+    """Test InterfaceProfile model."""
+
+    @classmethod
+    def setUpTestData(cls):
+        """Create three InterfaceProfile records."""
+        InterfaceProfile.objects.create(
+            name="Profile 1",
+            description="First profile",
+        )
+        InterfaceProfile.objects.create(
+            name="Profile 2",
+            description="Second profile",
+        )
+        InterfaceProfile.objects.create(
+            name="Profile 3",
+            description="",
+        )
+
+    def test_create_interface_profile(self):
+        """Test creating an InterfaceProfile instance."""
+        name = f"Profile {get_random_string(10)}"
+        instance = InterfaceProfile.objects.create(
+            name=name,
+            description="A test profile",
+        )
+
+        self.assertEqual(instance.name, name)
+        self.assertEqual(instance.description, "A test profile")
+        self.assertIsNotNone(instance.pk)
+
+    def test_create_without_description(self):
+        """Test that description is optional (blank allowed)."""
+        instance = InterfaceProfile.objects.create(
+            name=f"No Desc {get_random_string(6)}",
+        )
+
+        self.assertEqual(instance.description, "")
+
+    def test_str_representation(self):
+        """Test InterfaceProfile string representation returns name."""
+        instance = InterfaceProfile.objects.first()
+        self.assertEqual(str(instance), instance.name)
+
+    def test_absolute_url_contains_pk(self):
+        """Test get_absolute_url includes the instance PK."""
+        instance = InterfaceProfile.objects.first()
+        url = instance.get_absolute_url()
+
+        self.assertIsNotNone(url)
+        self.assertIn(str(instance.pk), url)
+
+    def test_default_ordering(self):
+        """Test that instances are ordered by name."""
+        instances = list(InterfaceProfile.objects.all())
+        names = [i.name for i in instances]
+        self.assertEqual(names, sorted(names))
+
+    def test_model_to_dict(self):
+        """Test model_to_dict helper includes expected keys."""
+        instance = InterfaceProfile.objects.first()
+        data = self.model_to_dict(instance)
+
+        self.assertIn("name", data)
+        self.assertEqual(data["name"], instance.name)
+        self.assertIn("id", data)
+
+    def test_instance_equal(self):
+        """Test assertInstanceEqual helper with matching data."""
+        instance = InterfaceProfile.objects.first()
+        self.assertInstanceEqual(
+            instance,
+            {"name": instance.name, "id": instance.pk},
+        )
+
+    def test_interface_profile_with_tags(self):
+        """Test InterfaceProfile supports tags (inherited from NetBoxModel)."""
+        tags = create_tags(["important", "wifi"])
+        instance = InterfaceProfile.objects.first()
+        instance.tags.add(*tags)
+        instance.save()
+
+        self.assertEqual(instance.tags.count(), 2)
+        self.assertIn(tags[0], instance.tags.all())
+
+    def test_filter_by_name(self):
+        """Test filtering records by name."""
+        results = InterfaceProfile.objects.filter(name__startswith="Profile")
+        self.assertGreaterEqual(results.count(), 3)
+
+
+class InterfaceProfileValidationTestCase(PluginModelTestCase):
+    """Test InterfaceProfile field validation."""
+
+    def test_name_max_length(self):
+        """Test that names exceeding 100 characters are rejected."""
+        long_name = "x" * 101
+
+        with self.assertRaises(ValidationError):
+            instance = InterfaceProfile(name=long_name)
+            instance.full_clean()
+
+    def test_name_required(self):
+        """Test that name is required."""
+        with self.assertRaises(ValidationError):
+            instance = InterfaceProfile(name="")
+            instance.full_clean()

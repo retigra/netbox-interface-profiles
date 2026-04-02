@@ -1,0 +1,24 @@
+name: ci
+on:
+  push:
+    branches:
+      - master
+      - main
+permissions:
+  contents: write
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Deploy docs
+        run: >
+          uvx
+          --from mkdocs-material
+          --with mkdocs-autorefs
+          --with mkdocstrings
+          --with mkdocstrings-python-legacy
+          --with mkdocs-include-markdown-plugin
+          mkdocs gh-deploy --force

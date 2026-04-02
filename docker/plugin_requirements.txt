@@ -1,0 +1,1 @@
+netbox-interface-profiles @ file:///opt/netbox-interface-profiles

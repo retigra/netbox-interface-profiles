@@ -1,0 +1,33 @@
+"""
+netbox interface profiles
+
+Plugin configuration for netbox interface profiles.
+
+For a complete list of PluginConfig attributes, see:
+https://docs.netbox.dev/en/stable/plugins/development/#pluginconfig-attributes
+"""
+
+__author__ = """Wouter de Bruijn"""
+__email__ = "wouter@retigra.nl"
+__version__ = "0.1.0"
+
+
+from netbox.plugins import PluginConfig
+
+
+class NetBoxInterfaceProfilesConfig(PluginConfig):
+    name = "netbox_interface_profiles"
+    verbose_name = "NetBox Interface Profiles"
+    description = "NetBox plugin for managing interface configuration profiles."
+    author = "Wouter de Bruijn"
+    author_email = "wouter@retigra.nl"
+    version = __version__
+    base_url = "netbox-interface-profiles"
+    min_version = "4.5.0"
+    max_version = "4.5.99"
+    graphql_schema = "graphql.schema"
+
+    url = "https://github.com/wouterdebruijn/netbox-interface-profiles"
+
+
+config = NetBoxInterfaceProfilesConfig

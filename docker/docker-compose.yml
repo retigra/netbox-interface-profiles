@@ -1,0 +1,66 @@
+services:
+  netbox: &netbox
+    build:
+      context: ..
+      dockerfile: ./docker/Dockerfile
+    environment:
+      DB_HOST: postgres
+      DB_NAME: netbox
+      DB_PASSWORD: netbox
+      DB_USER: netbox
+      REDIS_HOST: valkey
+      REDIS_PASSWORD: netbox
+      SECRET_KEY: uchohnee3Aer0aYoh5Xajuroorei2eiFoozahNoo9UoZahgahYaefahGheereeSi
+      DEBUG: "true"
+      DEVELOPER: "true"
+    volumes:
+      - ./configuration.py:/etc/netbox/config/configuration.py:ro
+      - ../:/opt/netbox-interface-profiles
+    healthcheck:
+      test: curl -f http://localhost:8080/login/ || exit 1
+      start_period: 90s
+      timeout: 3s
+      interval: 15s
+    entrypoint: ["/opt/netbox/docker-entrypoint.sh"]
+    command:
+      - /opt/netbox/venv/bin/python
+      - /opt/netbox/netbox/manage.py
+      - runserver
+      - 0.0.0.0:8000
+    ports:
+      - 8000:8000
+
+  netbox-worker:
+    <<: *netbox
+    depends_on:
+      netbox:
+        condition: service_healthy
+    command:
+      - /opt/netbox/venv/bin/python
+      - /opt/netbox/netbox/manage.py
+      - rqworker
+    healthcheck:
+      test: ps -aux | grep -v grep | grep -q rqworker || exit 1
+      start_period: 20s
+      timeout: 3s
+      interval: 15s
+    ports: []
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: netbox
+      POSTGRES_PASSWORD: netbox
+      POSTGRES_DB: netbox
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  valkey:
+    image: docker.io/valkey/valkey:9.0-alpine
+    command:
+      - sh
+      - -c
+      - valkey-server --appendonly yes --requirepass netbox
+
+volumes:
+  postgres_data:
