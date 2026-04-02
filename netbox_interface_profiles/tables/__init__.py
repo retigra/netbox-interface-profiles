@@ -9,5 +9,9 @@ https://django-tables2.readthedocs.io/
 """
 
 from .interface_profile import InterfaceProfileTable
+from .profile_config_template import ProfileConfigTemplateTable
 
-__all__ = ("InterfaceProfileTable",)
+__all__ = (
+    "InterfaceProfileTable",
+    "ProfileConfigTemplateTable",
+)

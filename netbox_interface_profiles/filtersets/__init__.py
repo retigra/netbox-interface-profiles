@@ -9,5 +9,9 @@ https://django-filter.readthedocs.io/
 """
 
 from .interface_profile import InterfaceProfileFilterSet
+from .profile_config_template import ProfileConfigTemplateFilterSet
 
-__all__ = ("InterfaceProfileFilterSet",)
+__all__ = (
+    "InterfaceProfileFilterSet",
+    "ProfileConfigTemplateFilterSet",
+)

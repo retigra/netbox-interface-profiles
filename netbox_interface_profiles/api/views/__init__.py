@@ -9,5 +9,9 @@ https://www.django-rest-framework.org/api-guide/viewsets/
 """
 
 from .interface_profile import InterfaceProfileViewSet
+from .profile_config_template import ProfileConfigTemplateViewSet
 
-__all__ = ("InterfaceProfileViewSet",)
+__all__ = (
+    "InterfaceProfileViewSet",
+    "ProfileConfigTemplateViewSet",
+)

@@ -20,6 +20,19 @@ interface_profile_buttons = [
     ),
 ]
 
+profile_config_template_buttons = [
+    PluginMenuButton(
+        link="plugins:netbox_interface_profiles:profileconfigtemplate_add",
+        title="Add",
+        icon_class="mdi mdi-plus-thick",
+    ),
+    PluginMenuButton(
+        link="plugins:netbox_interface_profiles:profileconfigtemplate_import",
+        title="Import",
+        icon_class="mdi mdi-upload",
+    ),
+]
+
 interface_profiles = (
     PluginMenuItem(
         link="plugins:netbox_interface_profiles:interfaceprofile_list",
@@ -29,8 +42,20 @@ interface_profiles = (
     ),
 )
 
+profile_config_templates = (
+    PluginMenuItem(
+        link="plugins:netbox_interface_profiles:profileconfigtemplate_list",
+        link_text="Config Templates",
+        buttons=profile_config_template_buttons,
+        auth_required=True,
+    ),
+)
+
 menu = PluginMenu(
     label="Interface Profiles",
-    groups=(("Profiles", interface_profiles),),
+    groups=(
+        ("Profiles", interface_profiles),
+        ("Templates", profile_config_templates),
+    ),
     icon_class="mdi mdi-ethernet",
 )

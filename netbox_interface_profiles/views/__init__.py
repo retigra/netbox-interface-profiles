@@ -17,6 +17,15 @@ from .interface_profile import (
     InterfaceProfileListView,
     InterfaceProfileView,
 )
+from .profile_config_template import (
+    ProfileConfigTemplateBulkDeleteView,
+    ProfileConfigTemplateBulkEditView,
+    ProfileConfigTemplateBulkImportView,
+    ProfileConfigTemplateDeleteView,
+    ProfileConfigTemplateEditView,
+    ProfileConfigTemplateListView,
+    ProfileConfigTemplateView,
+)
 
 __all__ = (
     "InterfaceProfileBulkDeleteView",
@@ -26,4 +35,11 @@ __all__ = (
     "InterfaceProfileEditView",
     "InterfaceProfileListView",
     "InterfaceProfileView",
+    "ProfileConfigTemplateBulkDeleteView",
+    "ProfileConfigTemplateBulkEditView",
+    "ProfileConfigTemplateBulkImportView",
+    "ProfileConfigTemplateDeleteView",
+    "ProfileConfigTemplateEditView",
+    "ProfileConfigTemplateListView",
+    "ProfileConfigTemplateView",
 )

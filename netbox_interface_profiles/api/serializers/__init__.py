@@ -12,5 +12,9 @@ https://www.django-rest-framework.org/api-guide/serializers/
 """
 
 from .interface_profile import InterfaceProfileSerializer
+from .profile_config_template import ProfileConfigTemplateSerializer
 
-__all__ = ("InterfaceProfileSerializer",)
+__all__ = (
+    "InterfaceProfileSerializer",
+    "ProfileConfigTemplateSerializer",
+)

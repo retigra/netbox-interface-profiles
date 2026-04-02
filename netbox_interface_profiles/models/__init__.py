@@ -9,5 +9,9 @@ https://docs.netbox.dev/en/stable/development/models/#netbox-model-features
 """
 
 from .interface_profile import InterfaceProfile
+from .profile_config_template import ProfileConfigTemplate
 
-__all__ = ("InterfaceProfile",)
+__all__ = (
+    "InterfaceProfile",
+    "ProfileConfigTemplate",
+)

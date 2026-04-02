@@ -17,7 +17,7 @@ services:
       - ./configuration.py:/etc/netbox/config/configuration.py:ro
       - ../:/opt/netbox-interface-profiles
     healthcheck:
-      test: curl -f http://localhost:8080/login/ || exit 1
+      test: curl -f http://localhost:8000/login/ || exit 1
       start_period: 90s
       timeout: 3s
       interval: 15s

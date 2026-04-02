@@ -9,9 +9,11 @@ https://strawberry.rocks/
 """
 
 from .interface_profile import InterfaceProfileQuery
+from .profile_config_template import ProfileConfigTemplateQuery
 
 schema = [
     InterfaceProfileQuery,
+    ProfileConfigTemplateQuery,
 ]
 
 __all__ = ("schema",)

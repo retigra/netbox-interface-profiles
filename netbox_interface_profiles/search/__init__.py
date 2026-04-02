@@ -6,12 +6,17 @@ global search. See: https://docs.netbox.dev/en/stable/plugins/development/search
 """
 
 from .interface_profile import InterfaceProfileIndex
+from .profile_config_template import ProfileConfigTemplateIndex
 
 # Register all search indexes for this plugin
 # The PluginConfig will automatically load these indexes
-indexes = (InterfaceProfileIndex,)
+indexes = (
+    InterfaceProfileIndex,
+    ProfileConfigTemplateIndex,
+)
 
 __all__ = (
     "InterfaceProfileIndex",
+    "ProfileConfigTemplateIndex",
     "indexes",
 )
