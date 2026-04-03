@@ -4,7 +4,7 @@ services:
       context: ..
       dockerfile: ./docker/Dockerfile
     environment:
-      DB_HOST: postgres
+      DB_HOST: 172.18.0.1
       DB_NAME: netbox
       DB_PASSWORD: netbox
       DB_USER: netbox
@@ -46,14 +46,16 @@ services:
       interval: 15s
     ports: []
 
-  postgres:
-    image: postgres:17-alpine
-    environment:
-      POSTGRES_USER: netbox
-      POSTGRES_PASSWORD: netbox
-      POSTGRES_DB: netbox
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+  # postgres:
+  #   image: postgres:17-alpine
+  #   environment:
+  #     POSTGRES_USER: netbox
+  #     POSTGRES_PASSWORD: netbox
+  #     POSTGRES_DB: netbox
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   ports:
+  #     - 5432:5432
 
   valkey:
     image: docker.io/valkey/valkey:9.0-alpine
