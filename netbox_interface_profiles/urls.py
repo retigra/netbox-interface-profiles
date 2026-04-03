@@ -16,7 +16,6 @@ from . import models, views
 urlpatterns = (
     # Interface Profiles
     path("interface-profiles/", views.InterfaceProfileListView.as_view(), name="interfaceprofile_list"),
-
     path("interface-profiles/add/", views.InterfaceProfileEditView.as_view(), name="interfaceprofile_add"),
     path(
         "interface-profiles/import/",
@@ -108,5 +107,74 @@ urlpatterns = (
         ObjectJournalView.as_view(),
         name="profileconfigtemplate_journal",
         kwargs={"model": models.ProfileConfigTemplate},
+    ),
+    # Interface Profile Assignments
+    path(
+        "interface-profile-assignments/",
+        views.InterfaceProfileAssignmentListView.as_view(),
+        name="interfaceprofileassignment_list",
+    ),
+    path(
+        "interface-profile-assignments/add/",
+        views.InterfaceProfileAssignmentEditView.as_view(),
+        name="interfaceprofileassignment_add",
+    ),
+    path(
+        "interface-profile-assignments/import/",
+        views.InterfaceProfileAssignmentBulkImportView.as_view(),
+        name="interfaceprofileassignment_import",
+    ),
+    path(
+        "interface-profile-assignments/edit/",
+        views.InterfaceProfileAssignmentBulkEditView.as_view(),
+        name="interfaceprofileassignment_bulk_edit",
+    ),
+    path(
+        "interface-profile-assignments/delete/",
+        views.InterfaceProfileAssignmentBulkDeleteView.as_view(),
+        name="interfaceprofileassignment_bulk_delete",
+    ),
+    path(
+        "interface-profile-assignments/<int:pk>/",
+        views.InterfaceProfileAssignmentView.as_view(),
+        name="interfaceprofileassignment",
+    ),
+    path(
+        "interface-profile-assignments/<int:pk>/edit/",
+        views.InterfaceProfileAssignmentEditView.as_view(),
+        name="interfaceprofileassignment_edit",
+    ),
+    path(
+        "interface-profile-assignments/<int:pk>/delete/",
+        views.InterfaceProfileAssignmentDeleteView.as_view(),
+        name="interfaceprofileassignment_delete",
+    ),
+    path(
+        "interface-profile-assignments/<int:pk>/changelog/",
+        ObjectChangeLogView.as_view(),
+        name="interfaceprofileassignment_changelog",
+        kwargs={"model": models.InterfaceProfileAssignment},
+    ),
+    path(
+        "interface-profile-assignments/<int:pk>/journal/",
+        ObjectJournalView.as_view(),
+        name="interfaceprofileassignment_journal",
+        kwargs={"model": models.InterfaceProfileAssignment},
+    ),
+    # HTMX endpoints for device interface profile actions
+    path(
+        "interface-profile-assignments/htmx/interface/<int:interface_id>/menu/",
+        views.InterfaceProfileAssignmentMenuHTMXView.as_view(),
+        name="interfaceprofileassignment_htmx_menu",
+    ),
+    path(
+        "interface-profile-assignments/htmx/interface/<int:interface_id>/set/<int:profile_id>/",
+        views.InterfaceProfileAssignmentSetHTMXView.as_view(),
+        name="interfaceprofileassignment_htmx_set",
+    ),
+    path(
+        "interface-profile-assignments/htmx/interface/<int:interface_id>/remove/",
+        views.InterfaceProfileAssignmentRemoveHTMXView.as_view(),
+        name="interfaceprofileassignment_htmx_remove",
     ),
 )

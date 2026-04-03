@@ -18,9 +18,7 @@ from ..models import InterfaceProfile
 class InterfaceProfileForm(NetBoxModelForm):
     """Create / Edit form for InterfaceProfile."""
 
-    fieldsets = (
-        FieldSet("name", "description", "tags", name=_("Interface Profile")),
-    )
+    fieldsets = (FieldSet("name", "description", "tags", name=_("Interface Profile")),)
 
     class Meta:
         model = InterfaceProfile

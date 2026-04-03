@@ -10,12 +10,13 @@ https://www.django-rest-framework.org/api-guide/routers/
 
 from netbox.api.routers import NetBoxRouter
 
-from .views import InterfaceProfileViewSet, ProfileConfigTemplateViewSet
+from .views import InterfaceProfileAssignmentViewSet, InterfaceProfileViewSet, ProfileConfigTemplateViewSet
 
 app_name = "netbox_interface_profiles"
 
 router = NetBoxRouter()
 router.register("interface-profiles", InterfaceProfileViewSet)
+router.register("interface-profile-assignments", InterfaceProfileAssignmentViewSet)
 router.register("profile-config-templates", ProfileConfigTemplateViewSet)
 
 urlpatterns = router.urls

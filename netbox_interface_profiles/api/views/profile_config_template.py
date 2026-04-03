@@ -12,8 +12,6 @@ from ..serializers import ProfileConfigTemplateSerializer
 class ProfileConfigTemplateViewSet(NetBoxModelViewSet):
     """API viewset for ProfileConfigTemplate."""
 
-    queryset = ProfileConfigTemplate.objects.select_related(
-        "interface_profile", "platform", "device_type"
-    )
+    queryset = ProfileConfigTemplate.objects.select_related("interface_profile", "platform", "device_type")
     serializer_class = ProfileConfigTemplateSerializer
     filterset_class = filtersets.ProfileConfigTemplateFilterSet

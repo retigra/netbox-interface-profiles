@@ -1,0 +1,32 @@
+{% load i18n %}
+
+{% if perms.netbox_interface_profiles.delete_interfaceprofileassignment %}
+  <li>
+    <button
+      type="button"
+      class="dropdown-item"
+      hx-post="{% url 'plugins:netbox_interface_profiles:interfaceprofileassignment_htmx_remove' interface_id=interface.pk %}"
+      hx-swap="none"
+    >
+      <i class="mdi mdi-close-circle-outline"></i> {% trans "Clear Assignment" %}
+    </button>
+  </li>
+  <li><hr class="dropdown-divider"></li>
+{% endif %}
+
+{% for profile in profiles %}
+  <li>
+    <button
+      type="button"
+      class="dropdown-item{% if current_profile and current_profile.pk == profile.pk %} active{% endif %}"
+      hx-post="{% url 'plugins:netbox_interface_profiles:interfaceprofileassignment_htmx_set' interface_id=interface.pk profile_id=profile.pk %}"
+      hx-swap="none"
+      {% if not perms.netbox_interface_profiles.add_interfaceprofileassignment and not perms.netbox_interface_profiles.change_interfaceprofileassignment %}disabled{% endif %}
+    >
+      {% if current_profile and current_profile.pk == profile.pk %}<i class="mdi mdi-check"></i>{% endif %}
+      {{ profile.name }}
+    </button>
+  </li>
+{% empty %}
+  <li><span class="dropdown-item-text text-muted">{% trans "No applicable profiles" %}</span></li>
+{% endfor %}

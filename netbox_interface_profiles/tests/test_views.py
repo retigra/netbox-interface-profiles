@@ -2,9 +2,11 @@
 Test cases for netbox interface profiles views.
 """
 
+from dcim.choices import InterfaceTypeChoices
+from dcim.models import Device, DeviceRole, DeviceType, Interface, Manufacturer, Site
 from django.urls import reverse
 
-from ..models import InterfaceProfile
+from ..models import InterfaceProfile, InterfaceProfileAssignment
 from ..testing import PluginViewTestCase
 from ..testing.utils import disable_warnings, get_random_string
 
@@ -153,3 +155,96 @@ class InterfaceProfileFormValidationTestCase(PluginViewTestCase):
         response = self.client.post(url, form_data)
         self.assertHttpStatus(response, 200)
         self.assertEqual(InterfaceProfile.objects.filter(description="Some description").count(), 0)
+
+
+class DeviceInterfaceProfileTabViewTestCase(PluginViewTestCase):
+    """Test the device interface profiles tab view."""
+
+    @classmethod
+    def setUpTestData(cls):
+        site = Site.objects.create(name="Site 1", slug="site-1")
+        manufacturer = Manufacturer.objects.create(name="Manufacturer 1", slug="manufacturer-1")
+        device_type = DeviceType.objects.create(
+            manufacturer=manufacturer,
+            model="Device Type 1",
+            slug="device-type-1",
+        )
+        role = DeviceRole.objects.create(name="Device Role 1", slug="device-role-1")
+
+        device = Device.objects.create(name="Device 1", site=site, device_type=device_type, role=role)
+        cls.interface = Interface.objects.create(
+            device=device,
+            name="eth0",
+            type=InterfaceTypeChoices.TYPE_1GE_FIXED,
+        )
+        Interface.objects.create(
+            device=device,
+            name="eth1",
+            type=InterfaceTypeChoices.TYPE_1GE_FIXED,
+        )
+
+        cls.profile = InterfaceProfile.objects.create(name="Assigned Profile", description="")
+        InterfaceProfileAssignment.objects.create(interface=cls.interface, interface_profile=cls.profile)
+
+    def test_device_interface_profiles_tab_renders_standard_controls(self):
+        self.add_permissions(
+            "dcim.view_device",
+            "dcim.view_interface",
+            "netbox_interface_profiles.view_interfaceprofile",
+            "netbox_interface_profiles.view_interfaceprofileassignment",
+        )
+
+        url = reverse(
+            "dcim:device_interface_profiles",
+            kwargs={"pk": self.interface.device.pk},
+        )
+        response = self.client.get(url)
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, "Quick search")
+        self.assertContains(response, "Saved filter")
+        self.assertContains(response, "Configure Table")
+        self.assertContains(response, "DeviceInterfaceTable_config")
+        self.assertContains(response, self.profile.get_absolute_url())
+        self.assertContains(response, self.profile.name)
+
+    def test_htmx_menu_endpoint_lists_profiles(self):
+        self.add_permissions("netbox_interface_profiles.view_interfaceprofileassignment")
+
+        url = reverse(
+            "plugins:netbox_interface_profiles:interfaceprofileassignment_htmx_menu",
+            kwargs={"interface_id": self.interface.pk},
+        )
+        response = self.client.get(url)
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, self.profile.name)
+
+    def test_htmx_set_endpoint_assigns_profile(self):
+        self.add_permissions("netbox_interface_profiles.add_interfaceprofileassignment")
+        new_profile = InterfaceProfile.objects.create(name="New HTMX Profile", description="")
+
+        url = reverse(
+            "plugins:netbox_interface_profiles:interfaceprofileassignment_htmx_set",
+            kwargs={
+                "interface_id": self.interface.pk,
+                "profile_id": new_profile.pk,
+            },
+        )
+        response = self.client.post(url)
+
+        self.assertHttpStatus(response, 204)
+        assignment = InterfaceProfileAssignment.objects.get(interface=self.interface)
+        self.assertEqual(assignment.interface_profile, new_profile)
+
+    def test_htmx_remove_endpoint_removes_assignment(self):
+        self.add_permissions("netbox_interface_profiles.delete_interfaceprofileassignment")
+
+        url = reverse(
+            "plugins:netbox_interface_profiles:interfaceprofileassignment_htmx_remove",
+            kwargs={"interface_id": self.interface.pk},
+        )
+        response = self.client.post(url)
+
+        self.assertHttpStatus(response, 204)
+        self.assertFalse(InterfaceProfileAssignment.objects.filter(interface=self.interface).exists())

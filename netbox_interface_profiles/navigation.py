@@ -51,11 +51,34 @@ profile_config_templates = (
     ),
 )
 
+assignment_buttons = [
+    PluginMenuButton(
+        link="plugins:netbox_interface_profiles:interfaceprofileassignment_add",
+        title="Add",
+        icon_class="mdi mdi-plus-thick",
+    ),
+    PluginMenuButton(
+        link="plugins:netbox_interface_profiles:interfaceprofileassignment_import",
+        title="Import",
+        icon_class="mdi mdi-upload",
+    ),
+]
+
+assignments = (
+    PluginMenuItem(
+        link="plugins:netbox_interface_profiles:interfaceprofileassignment_list",
+        link_text="Assignments",
+        buttons=assignment_buttons,
+        auth_required=True,
+    ),
+)
+
 menu = PluginMenu(
     label="Interface Profiles",
     groups=(
         ("Profiles", interface_profiles),
         ("Templates", profile_config_templates),
+        ("Assignments", assignments),
     ),
     icon_class="mdi mdi-ethernet",
 )

@@ -44,7 +44,5 @@ class ProfileConfigTemplateFilterSet(NetBoxModelFilterSet):
         if not value.strip():
             return queryset
         return queryset.filter(
-            Q(name__icontains=value)
-            | Q(description__icontains=value)
-            | Q(template_code__icontains=value)
+            Q(name__icontains=value) | Q(description__icontains=value) | Q(template_code__icontains=value)
         )

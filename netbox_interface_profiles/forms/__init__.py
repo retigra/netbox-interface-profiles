@@ -11,6 +11,13 @@ from .interface_profile import (
     InterfaceProfileForm,
     InterfaceProfileImportForm,
 )
+from .interface_profile_assignment import (
+    DeviceBulkAssignProfileForm,
+    InterfaceProfileAssignmentBulkEditForm,
+    InterfaceProfileAssignmentFilterSetForm,
+    InterfaceProfileAssignmentForm,
+    InterfaceProfileAssignmentImportForm,
+)
 from .profile_config_template import (
     ProfileConfigTemplateBulkEditForm,
     ProfileConfigTemplateFilterSetForm,
@@ -19,6 +26,11 @@ from .profile_config_template import (
 )
 
 __all__ = (
+    "DeviceBulkAssignProfileForm",
+    "InterfaceProfileAssignmentBulkEditForm",
+    "InterfaceProfileAssignmentFilterSetForm",
+    "InterfaceProfileAssignmentForm",
+    "InterfaceProfileAssignmentImportForm",
     "InterfaceProfileBulkEditForm",
     "InterfaceProfileFilterSetForm",
     "InterfaceProfileForm",

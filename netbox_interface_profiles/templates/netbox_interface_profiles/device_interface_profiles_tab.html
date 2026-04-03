@@ -1,0 +1,24 @@
+{% extends 'generic/object_children.html' %}
+{% load i18n %}
+
+{% block table_controls %}
+  {% include 'dcim/device/inc/interface_table_controls.html' with table_modal='DeviceInterfaceTable_config' %}
+{% endblock table_controls %}
+
+{% block bulk_controls %}
+  <div class="row g-2 align-items-end">
+      <div class="col-auto">
+          {{ bulk_assign_form.interface_profile }}
+      </div>
+      <div class="col-auto">
+          <button type="submit" name="_assign" class="btn btn-warning" {% if not perms.netbox_interface_profiles.add_interfaceprofileassignment %}disabled{% endif %}>
+              <i class="mdi mdi-check-all"></i> {% trans "Assign Profile" %}
+          </button>
+      </div>
+      <div class="col-auto">
+          <button type="submit" name="_remove" class="btn btn-danger" {% if not perms.netbox_interface_profiles.delete_interfaceprofileassignment %}disabled{% endif %}>
+              <i class="mdi mdi-delete"></i> {% trans "Remove Assignment" %}
+          </button>
+      </div>
+  </div>
+{% endblock bulk_controls %}

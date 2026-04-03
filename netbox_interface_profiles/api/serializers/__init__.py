@@ -12,9 +12,11 @@ https://www.django-rest-framework.org/api-guide/serializers/
 """
 
 from .interface_profile import InterfaceProfileSerializer
+from .interface_profile_assignment import InterfaceProfileAssignmentSerializer
 from .profile_config_template import ProfileConfigTemplateSerializer
 
 __all__ = (
+    "InterfaceProfileAssignmentSerializer",
     "InterfaceProfileSerializer",
     "ProfileConfigTemplateSerializer",
 )

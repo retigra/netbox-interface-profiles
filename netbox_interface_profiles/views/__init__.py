@@ -17,6 +17,19 @@ from .interface_profile import (
     InterfaceProfileListView,
     InterfaceProfileView,
 )
+from .interface_profile_assignment import (
+    DeviceInterfaceProfileTabView,
+    InterfaceProfileAssignmentBulkDeleteView,
+    InterfaceProfileAssignmentBulkEditView,
+    InterfaceProfileAssignmentBulkImportView,
+    InterfaceProfileAssignmentDeleteView,
+    InterfaceProfileAssignmentEditView,
+    InterfaceProfileAssignmentListView,
+    InterfaceProfileAssignmentMenuHTMXView,
+    InterfaceProfileAssignmentRemoveHTMXView,
+    InterfaceProfileAssignmentSetHTMXView,
+    InterfaceProfileAssignmentView,
+)
 from .profile_config_template import (
     ProfileConfigTemplateBulkDeleteView,
     ProfileConfigTemplateBulkEditView,
@@ -28,6 +41,17 @@ from .profile_config_template import (
 )
 
 __all__ = (
+    "DeviceInterfaceProfileTabView",
+    "InterfaceProfileAssignmentBulkDeleteView",
+    "InterfaceProfileAssignmentBulkEditView",
+    "InterfaceProfileAssignmentBulkImportView",
+    "InterfaceProfileAssignmentDeleteView",
+    "InterfaceProfileAssignmentEditView",
+    "InterfaceProfileAssignmentListView",
+    "InterfaceProfileAssignmentMenuHTMXView",
+    "InterfaceProfileAssignmentRemoveHTMXView",
+    "InterfaceProfileAssignmentSetHTMXView",
+    "InterfaceProfileAssignmentView",
     "InterfaceProfileBulkDeleteView",
     "InterfaceProfileBulkEditView",
     "InterfaceProfileBulkImportView",

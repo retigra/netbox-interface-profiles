@@ -23,7 +23,4 @@ class InterfaceProfileFilterSet(NetBoxModelFilterSet):
         """Support global keyword search against name and description fields."""
         if not value.strip():
             return queryset
-        return queryset.filter(
-            Q(name__icontains=value)
-            | Q(description__icontains=value)
-        )
+        return queryset.filter(Q(name__icontains=value) | Q(description__icontains=value))
