@@ -37,7 +37,6 @@ class ProfileConfigTemplate(NetBoxModel):
     )
 
     class Meta:
-        app_label = "netbox_interface_profiles"
         ordering = ("interface_profile", "platform", "name")
         verbose_name = "Profile Config Template"
         verbose_name_plural = "Profile Config Templates"

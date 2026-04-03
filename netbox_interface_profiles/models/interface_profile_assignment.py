@@ -15,11 +15,7 @@ class InterfaceProfileAssignment(NetBoxModel):
     same InterfaceProfile, but each interface can only have one assignment.
     """
 
-    interface = models.OneToOneField(
-        to="dcim.Interface",
-        on_delete=models.CASCADE,
-        related_name="profile_assignment",
-    )
+    interface = models.OneToOneField(to="dcim.Interface", related_name="profile_assignment", on_delete=models.CASCADE)
     interface_profile = models.ForeignKey(
         to="netbox_interface_profiles.InterfaceProfile",
         on_delete=models.PROTECT,
@@ -27,7 +23,6 @@ class InterfaceProfileAssignment(NetBoxModel):
     )
 
     class Meta:
-        app_label = "netbox_interface_profiles"
         ordering = ("interface",)
         verbose_name = "Interface Profile Assignment"
         verbose_name_plural = "Interface Profile Assignments"

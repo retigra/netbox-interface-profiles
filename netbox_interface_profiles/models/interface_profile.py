@@ -16,7 +16,6 @@ class InterfaceProfile(NetBoxModel):
     description = models.TextField(blank=True)
 
     class Meta:
-        app_label = "netbox_interface_profiles"
         ordering = ("name",)
         verbose_name = "Interface Profile"
         verbose_name_plural = "Interface Profiles"
