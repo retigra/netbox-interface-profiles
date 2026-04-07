@@ -78,6 +78,26 @@ class InterfaceProfileAssignmentBulkDeleteView(generic.BulkDeleteView):
 # ---------------------------------------------------------------------------
 
 
+def _get_devices_for_virtual_chassis(device):
+    """
+    Get the device and any virtual chassis member devices if device is a master.
+
+    Args:
+        device: A Device instance
+
+    Returns:
+        QuerySet of Device objects (the device itself plus any members if it's a VC master)
+    """
+    devices = Device.objects.filter(pk=device.pk)
+
+    # If device is a virtual chassis master, include all member devices
+    if device.virtual_chassis and device.virtual_chassis.master == device:
+        members = device.virtual_chassis.members.all()
+        devices = devices | members
+
+    return devices
+
+
 @register_model_view(Device, name="interface_profiles", path="interface-profiles")
 class DeviceInterfaceProfileTabView(DeviceComponentsView):
     """Tab on the Device detail page showing all interfaces with their assigned profile."""
@@ -91,16 +111,17 @@ class DeviceInterfaceProfileTabView(DeviceComponentsView):
     template_name = "netbox_interface_profiles/device_interface_profiles_tab.html"
     tab = ViewTab(
         label="Interface Profiles",
-        badge=lambda obj: Interface.objects.filter(device=obj).count(),
+        badge=lambda obj: Interface.objects.filter(device__in=_get_devices_for_virtual_chassis(obj)).count(),
         permission="netbox_interface_profiles.view_interfaceprofileassignment",
     )
 
     def get_children(self, request, parent):
+        devices = _get_devices_for_virtual_chassis(parent)
         return (
             Interface.objects.restrict(request.user, "view")
-            .filter(device=parent)
+            .filter(device__in=devices)
             .select_related("profile_assignment__interface_profile")
-            .order_by("name")
+            .order_by("device__name", "name")
         )
 
     def get_extra_context(self, request, instance):
@@ -116,7 +137,8 @@ class DeviceInterfaceProfileTabView(DeviceComponentsView):
             messages.warning(request, _("No interfaces selected."))
             return redirect(request.path)
 
-        interfaces = Interface.objects.filter(device=device, pk__in=selected_pks)
+        devices = _get_devices_for_virtual_chassis(device)
+        interfaces = Interface.objects.filter(device__in=devices, pk__in=selected_pks)
 
         if "_assign" in request.POST:
             assign_form = forms.DeviceBulkAssignProfileForm(request.POST)

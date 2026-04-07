@@ -226,6 +226,8 @@ class DeviceInterfaceProfileTabViewTestCase(PluginViewTestCase):
         self.assertContains(response, "Saved filter")
         self.assertContains(response, "Configure Table")
         self.assertContains(response, "DeviceInterfaceTable_config")
+        self.assertContains(response, reverse("dcim:device_interfaces", kwargs={"pk": self.interface.device.pk}))
+        self.assertContains(response, "Legacy Interfaces View")
         self.assertContains(response, self.profile.get_absolute_url())
         self.assertContains(response, self.profile.name)
 

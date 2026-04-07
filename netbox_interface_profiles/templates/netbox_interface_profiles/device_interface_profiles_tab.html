@@ -1,6 +1,17 @@
 {% extends 'generic/object_children.html' %}
 {% load i18n %}
 
+{% block content %}
+  {% if perms.dcim.view_interface %}
+  <div class="mb-3">
+    <a href="{% url 'dcim:device_interfaces' pk=object.pk %}" class="btn btn-secondary">
+      <i class="mdi mdi-open-in-new"></i> {% trans "Legacy Interfaces View" %}
+    </a>
+  </div>
+  {% endif %}
+  {{ block.super }}
+{% endblock content %}
+
 {% block table_controls %}
   {% include 'dcim/device/inc/interface_table_controls.html' with table_modal='DeviceInterfaceTable_config' %}
 {% endblock table_controls %}
