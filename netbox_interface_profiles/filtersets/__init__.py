@@ -10,10 +10,12 @@ https://django-filter.readthedocs.io/
 
 from .interface_profile import InterfaceProfileFilterSet
 from .interface_profile_assignment import InterfaceProfileAssignmentFilterSet
+from .interface_template import InterfaceTemplateFilterSet
 from .profile_config_template import ProfileConfigTemplateFilterSet
 
 __all__ = (
     "InterfaceProfileAssignmentFilterSet",
     "InterfaceProfileFilterSet",
+    "InterfaceTemplateFilterSet",
     "ProfileConfigTemplateFilterSet",
 )

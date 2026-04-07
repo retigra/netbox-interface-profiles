@@ -10,10 +10,12 @@ https://docs.netbox.dev/en/stable/development/models/#netbox-model-features
 
 from .interface_profile import InterfaceProfile
 from .interface_profile_assignment import InterfaceProfileAssignment
+from .interface_template import InterfaceTemplate
 from .profile_config_template import ProfileConfigTemplate
 
 __all__ = (
     "InterfaceProfile",
     "InterfaceProfileAssignment",
+    "InterfaceTemplate",
     "ProfileConfigTemplate",
 )

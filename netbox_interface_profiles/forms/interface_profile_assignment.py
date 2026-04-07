@@ -17,6 +17,23 @@ from utilities.forms.rendering import FieldSet
 from ..models import InterfaceProfile, InterfaceProfileAssignment
 
 
+def get_interface_profile_queryset(interface=None):
+    """Get filtered queryset of InterfaceProfile based on interface's device role."""
+    from django.db.models import Q
+
+    queryset = InterfaceProfile.objects.all().order_by("name")
+
+    if interface and interface.device:
+        device = interface.device
+        device_role = device.role
+
+        if device_role:
+            # Profiles with this device_role OR profiles with no device_role restriction
+            queryset = queryset.filter(Q(device_roles__isnull=True) | Q(device_roles=device_role)).distinct()
+
+    return queryset
+
+
 class InterfaceProfileAssignmentForm(NetBoxModelForm):
     """Create / Edit form for InterfaceProfileAssignment."""
 
@@ -34,6 +51,12 @@ class InterfaceProfileAssignmentForm(NetBoxModelForm):
     class Meta:
         model = InterfaceProfileAssignment
         fields = ("interface", "interface_profile", "tags")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Filter profiles based on the interface's device role if editing existing assignment
+        if self.instance and self.instance.interface:
+            self.fields["interface_profile"].queryset = get_interface_profile_queryset(self.instance.interface)
 
 
 class InterfaceProfileAssignmentImportForm(NetBoxModelImportForm):
@@ -71,6 +94,17 @@ class DeviceBulkAssignProfileForm(forms.Form):
         label=_("Interface Profile"),
         required=False,
     )
+
+    def __init__(self, device=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Filter profiles based on device role if device is provided
+        if device:
+            self.fields["interface_profile"].queryset = InterfaceProfile.objects.filter(
+                device_roles__isnull=True
+            ) | InterfaceProfile.objects.filter(device_roles=device.role)
+            self.fields["interface_profile"].queryset = (
+                self.fields["interface_profile"].queryset.distinct().order_by("name")
+            )
 
 
 class InterfaceProfileAssignmentFilterSetForm(NetBoxModelFilterSetForm):

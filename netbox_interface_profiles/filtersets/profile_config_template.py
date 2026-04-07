@@ -16,14 +16,17 @@ class ProfileConfigTemplateFilterSet(NetBoxModelFilterSet):
     name = django_filters.CharFilter(lookup_expr="icontains")
     description = django_filters.CharFilter(lookup_expr="icontains")
     interface_profile_id = django_filters.ModelMultipleChoiceFilter(
+        field_name="interface_profile",
         queryset=InterfaceProfile.objects.all(),
         label="Interface Profile (ID)",
     )
     platform_id = django_filters.ModelMultipleChoiceFilter(
+        field_name="platform",
         queryset=Platform.objects.all(),
         label="Platform (ID)",
     )
     device_type_id = django_filters.ModelMultipleChoiceFilter(
+        field_name="device_type",
         queryset=DeviceType.objects.all(),
         label="Device Type (ID)",
     )

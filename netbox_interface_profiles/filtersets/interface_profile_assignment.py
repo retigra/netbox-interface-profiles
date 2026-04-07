@@ -13,10 +13,12 @@ class InterfaceProfileAssignmentFilterSet(NetBoxModelFilterSet):
     """Filter set for InterfaceProfileAssignment."""
 
     interface_id = django_filters.ModelMultipleChoiceFilter(
+        field_name="interface",
         queryset=Interface.objects.all(),
         label="Interface (ID)",
     )
     interface_profile_id = django_filters.ModelMultipleChoiceFilter(
+        field_name="interface_profile",
         queryset=InterfaceProfile.objects.all(),
         label="Interface Profile (ID)",
     )

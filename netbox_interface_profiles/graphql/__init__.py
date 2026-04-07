@@ -10,11 +10,13 @@ https://strawberry.rocks/
 
 from .interface_profile import InterfaceProfileQuery
 from .interface_profile_assignment import InterfaceProfileAssignmentQuery
+from .interface_template import InterfaceTemplateQuery
 from .profile_config_template import ProfileConfigTemplateQuery
 
 schema = [
     InterfaceProfileQuery,
     InterfaceProfileAssignmentQuery,
+    InterfaceTemplateQuery,
     ProfileConfigTemplateQuery,
 ]
 

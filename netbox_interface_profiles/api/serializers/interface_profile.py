@@ -2,6 +2,7 @@
 InterfaceProfile serializer for netbox interface profiles API.
 """
 
+from dcim.api.serializers import DeviceRoleSerializer
 from netbox.api.serializers import NetBoxModelSerializer
 from rest_framework import serializers
 
@@ -14,6 +15,7 @@ class InterfaceProfileSerializer(NetBoxModelSerializer):
     url = serializers.HyperlinkedIdentityField(
         view_name="plugins-api:netbox_interface_profiles-api:interfaceprofile-detail"
     )
+    device_roles = DeviceRoleSerializer(many=True, nested=True)
 
     class Meta:
         model = InterfaceProfile
@@ -22,6 +24,7 @@ class InterfaceProfileSerializer(NetBoxModelSerializer):
             "name",
             "url",
             "display",
+            "device_roles",
             "created",
             "last_updated",
         )

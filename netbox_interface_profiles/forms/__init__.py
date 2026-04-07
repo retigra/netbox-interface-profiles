@@ -18,6 +18,12 @@ from .interface_profile_assignment import (
     InterfaceProfileAssignmentForm,
     InterfaceProfileAssignmentImportForm,
 )
+from .interface_template import (
+    InterfaceTemplateBulkEditForm,
+    InterfaceTemplateFilterSetForm,
+    InterfaceTemplateForm,
+    InterfaceTemplateImportForm,
+)
 from .profile_config_template import (
     ProfileConfigTemplateBulkEditForm,
     ProfileConfigTemplateFilterSetForm,
@@ -35,6 +41,10 @@ __all__ = (
     "InterfaceProfileFilterSetForm",
     "InterfaceProfileForm",
     "InterfaceProfileImportForm",
+    "InterfaceTemplateBulkEditForm",
+    "InterfaceTemplateFilterSetForm",
+    "InterfaceTemplateForm",
+    "InterfaceTemplateImportForm",
     "ProfileConfigTemplateBulkEditForm",
     "ProfileConfigTemplateFilterSetForm",
     "ProfileConfigTemplateForm",

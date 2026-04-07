@@ -55,6 +55,47 @@ urlpatterns = (
         name="interfaceprofile_journal",
         kwargs={"model": models.InterfaceProfile},
     ),
+    # Interface Templates
+    path("interface-templates/", views.InterfaceTemplateListView.as_view(), name="interfacetemplate_list"),
+    path("interface-templates/add/", views.InterfaceTemplateEditView.as_view(), name="interfacetemplate_add"),
+    path(
+        "interface-templates/import/",
+        views.InterfaceTemplateBulkImportView.as_view(),
+        name="interfacetemplate_import",
+    ),
+    path(
+        "interface-templates/edit/",
+        views.InterfaceTemplateBulkEditView.as_view(),
+        name="interfacetemplate_bulk_edit",
+    ),
+    path(
+        "interface-templates/delete/",
+        views.InterfaceTemplateBulkDeleteView.as_view(),
+        name="interfacetemplate_bulk_delete",
+    ),
+    path("interface-templates/<int:pk>/", views.InterfaceTemplateView.as_view(), name="interfacetemplate"),
+    path(
+        "interface-templates/<int:pk>/edit/",
+        views.InterfaceTemplateEditView.as_view(),
+        name="interfacetemplate_edit",
+    ),
+    path(
+        "interface-templates/<int:pk>/delete/",
+        views.InterfaceTemplateDeleteView.as_view(),
+        name="interfacetemplate_delete",
+    ),
+    path(
+        "interface-templates/<int:pk>/changelog/",
+        ObjectChangeLogView.as_view(),
+        name="interfacetemplate_changelog",
+        kwargs={"model": models.InterfaceTemplate},
+    ),
+    path(
+        "interface-templates/<int:pk>/journal/",
+        ObjectJournalView.as_view(),
+        name="interfacetemplate_journal",
+        kwargs={"model": models.InterfaceTemplate},
+    ),
     # Profile Config Templates
     path(
         "profile-config-templates/",

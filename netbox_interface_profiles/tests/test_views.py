@@ -248,3 +248,27 @@ class DeviceInterfaceProfileTabViewTestCase(PluginViewTestCase):
 
         self.assertHttpStatus(response, 204)
         self.assertFalse(InterfaceProfileAssignment.objects.filter(interface=self.interface).exists())
+
+    def test_htmx_menu_filters_profiles_by_device_role_scope(self):
+        """Ensure role-scoped profiles are filtered for the device in HTMX menu."""
+        self.add_permissions("netbox_interface_profiles.view_interfaceprofileassignment")
+
+        matching_profile = InterfaceProfile.objects.create(name="Role Matched", description="")
+        matching_profile.device_roles.add(self.interface.device.device_role)
+
+        other_role = DeviceRole.objects.create(name="Other Role", slug="other-role")
+        non_matching_profile = InterfaceProfile.objects.create(name="Role Not Matched", description="")
+        non_matching_profile.device_roles.add(other_role)
+
+        unscoped_profile = InterfaceProfile.objects.create(name="Role Unscoped", description="")
+
+        url = reverse(
+            "plugins:netbox_interface_profiles:interfaceprofileassignment_htmx_menu",
+            kwargs={"interface_id": self.interface.pk},
+        )
+        response = self.client.get(url)
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, matching_profile.name)
+        self.assertContains(response, unscoped_profile.name)
+        self.assertNotContains(response, non_matching_profile.name)

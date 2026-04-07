@@ -30,6 +30,15 @@ from .interface_profile_assignment import (
     InterfaceProfileAssignmentSetHTMXView,
     InterfaceProfileAssignmentView,
 )
+from .interface_template import (
+    InterfaceTemplateBulkDeleteView,
+    InterfaceTemplateBulkEditView,
+    InterfaceTemplateBulkImportView,
+    InterfaceTemplateDeleteView,
+    InterfaceTemplateEditView,
+    InterfaceTemplateListView,
+    InterfaceTemplateView,
+)
 from .profile_config_template import (
     ProfileConfigTemplateBulkDeleteView,
     ProfileConfigTemplateBulkEditView,
@@ -59,6 +68,13 @@ __all__ = (
     "InterfaceProfileEditView",
     "InterfaceProfileListView",
     "InterfaceProfileView",
+    "InterfaceTemplateBulkDeleteView",
+    "InterfaceTemplateBulkEditView",
+    "InterfaceTemplateBulkImportView",
+    "InterfaceTemplateDeleteView",
+    "InterfaceTemplateEditView",
+    "InterfaceTemplateListView",
+    "InterfaceTemplateView",
     "ProfileConfigTemplateBulkDeleteView",
     "ProfileConfigTemplateBulkEditView",
     "ProfileConfigTemplateBulkImportView",

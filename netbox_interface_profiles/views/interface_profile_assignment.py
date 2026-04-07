@@ -105,7 +105,7 @@ class DeviceInterfaceProfileTabView(DeviceComponentsView):
 
     def get_extra_context(self, request, instance):
         return {
-            "bulk_assign_form": forms.DeviceBulkAssignProfileForm(),
+            "bulk_assign_form": forms.DeviceBulkAssignProfileForm(device=instance),
         }
 
     def post(self, request, **kwargs):
@@ -160,11 +160,28 @@ class DeviceInterfaceProfileTabView(DeviceComponentsView):
 
 
 def _get_applicable_profiles(device: Device):
-    """Return profiles applicable to a device based on config template scope."""
+    """
+    Return profiles applicable to a device.
 
+    Filters by:
+    1. Config template scope (platform + device_type)
+    2. Device role restrictions (if profile has device_roles set)
+    """
     if device.platform is None:
-        return models.InterfaceProfile.objects.all().order_by("name")
+        # No platform: return profiles without device role if device has no role,
+        # or with matching device role if device has one
+        if device.role:
+            return (
+                models.InterfaceProfile.objects.filter(
+                    Q(device_roles__isnull=True) | Q(device_roles=device.device_role)
+                )
+                .distinct()
+                .order_by("name")
+            )
+        else:
+            return models.InterfaceProfile.objects.filter(device_roles__isnull=True).order_by("name")
 
+    # Has platform: filter by config template scope first
     profiles = (
         models.InterfaceProfile.objects.filter(
             config_templates__platform=device.platform,
@@ -174,9 +191,24 @@ def _get_applicable_profiles(device: Device):
         .order_by("name")
     )
 
-    if profiles.exists():
-        return profiles
-    return models.InterfaceProfile.objects.all().order_by("name")
+    if not profiles.exists():
+        # Fallback to all profiles (or device-role filtered if device has role)
+        if device.role:
+            return (
+                models.InterfaceProfile.objects.filter(Q(device_roles__isnull=True) | Q(device_roles=device.role))
+                .distinct()
+                .order_by("name")
+            )
+        else:
+            return models.InterfaceProfile.objects.filter(device_roles__isnull=True).order_by("name")
+
+    # Apply device role filtering on the config-template-filtered queryset
+    if device.role:
+        profiles = profiles.filter(Q(device_roles__isnull=True) | Q(device_roles=device.role)).distinct()
+    else:
+        profiles = profiles.filter(device_roles__isnull=True)
+
+    return profiles.order_by("name")
 
 
 class InterfaceProfileAssignmentMenuHTMXView(View):

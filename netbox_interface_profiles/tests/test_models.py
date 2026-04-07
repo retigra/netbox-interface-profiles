@@ -4,7 +4,11 @@ Test cases for netbox interface profiles models.
 
 from django.core.exceptions import ValidationError
 
-from ..models import InterfaceProfile
+from django.contrib.contenttypes.models import ContentType
+from dcim.models import DeviceRole, Site, SiteGroup
+from ipam.models import VLAN, VLANGroup
+
+from ..models import InterfaceProfile, InterfaceTemplate
 from ..testing import PluginModelTestCase
 from ..testing.utils import create_tags, get_random_string
 
@@ -116,3 +120,87 @@ class InterfaceProfileValidationTestCase(PluginModelTestCase):
         with self.assertRaises(ValidationError):
             instance = InterfaceProfile(name="")
             instance.full_clean()
+
+
+class InterfaceTemplateTestCase(PluginModelTestCase):
+    """Test InterfaceTemplate model."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.profile = InterfaceProfile.objects.create(
+            name="Template Profile",
+            description="",
+        )
+        cls.site_group = SiteGroup.objects.create(name="SG-1", slug="sg-1")
+
+    def test_create_interface_template(self):
+        """Test creating an InterfaceTemplate instance with optional fields."""
+        template = InterfaceTemplate.objects.create(
+            interface_profile=self.profile,
+            site_group=self.site_group,
+            name="Access Port Template",
+            description="",
+            speed=1000,
+            duplex="full",
+            mtu=1500,
+            mode="access",
+            enabled=True,
+            poe_mode="power-supply",
+            untagged_vlan_vid=10,
+            tagged_vlans_vids=[20, 30],
+        )
+
+        self.assertEqual(template.name, "Access Port Template")
+        self.assertEqual(template.interface_profile, self.profile)
+        self.assertEqual(template.site_group, self.site_group)
+        self.assertEqual(template.untagged_vlan_vid, 10)
+        self.assertEqual(template.tagged_vlans_vids, [20, 30])
+
+    def test_profile_device_roles_assignment(self):
+        """Test assigning device role scopes to InterfaceProfile."""
+        role = DeviceRole.objects.create(name="Role-A", slug="role-a")
+        profile = InterfaceProfile.objects.create(name="Scoped Profile", description="")
+        profile.device_roles.add(role)
+
+        self.assertEqual(profile.device_roles.count(), 1)
+        self.assertIn(role, profile.device_roles.all())
+
+    def test_vlan_resolution_prefers_site_vlan(self):
+        """Test VID resolution prefers VLAN explicitly assigned to the site."""
+        site_group = SiteGroup.objects.create(name="SG-Resolve-1", slug="sg-resolve-1")
+        site = Site.objects.create(name="Site-Resolve-1", slug="site-resolve-1", group=site_group)
+
+        # Site-scoped VLAN in site-specific group
+        site_ct = ContentType.objects.get_for_model(Site)
+        site_vlan_group = VLANGroup.objects.create(
+            name="VG-Site-1",
+            slug="vg-site-1",
+            scope_type=site_ct,
+            scope_id=site.pk,
+        )
+        site_vlan = VLAN.objects.create(name="VLAN10-Site", vid=10, site=site, group=site_vlan_group)
+
+        # SiteGroup-scoped VLAN with same VID; should lose to site VLAN
+        site_group_ct = ContentType.objects.get_for_model(SiteGroup)
+        site_group_vlan_group = VLANGroup.objects.create(
+            name="VG-SG-1",
+            slug="vg-sg-1",
+            scope_type=site_group_ct,
+            scope_id=site_group.pk,
+        )
+        VLAN.objects.create(name="VLAN10-SG", vid=10, group=site_group_vlan_group)
+
+        template = InterfaceTemplate.objects.create(
+            interface_profile=self.profile,
+            name="Resolve Template",
+            untagged_vlan_vid=10,
+            tagged_vlans_vids=[10],
+        )
+
+        resolved_untagged = template.resolve_untagged_vlan(site)
+        resolved_tagged = template.resolve_tagged_vlans(site)
+
+        self.assertIsNotNone(resolved_untagged)
+        self.assertEqual(resolved_untagged.pk, site_vlan.pk)
+        self.assertEqual(len(resolved_tagged), 1)
+        self.assertEqual(resolved_tagged[0].pk, site_vlan.pk)

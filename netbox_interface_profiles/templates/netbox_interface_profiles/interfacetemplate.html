@@ -1,0 +1,82 @@
+{% extends 'generic/object.html' %}
+{% load helpers %}
+
+{% block content %}
+  <div class="row">
+    <div class="col col-md-6">
+      <div class="card">
+        <h5 class="card-header">Interface Template</h5>
+        <table class="table table-hover attr-table">
+          <tr>
+            <th scope="row">Name</th>
+            <td>{{ object.name }}</td>
+          </tr>
+          <tr>
+            <th scope="row">Interface Profile</th>
+            <td>{{ object.interface_profile|linkify }}</td>
+          </tr>
+          <tr>
+            <th scope="row">Site Group</th>
+            <td>
+              {% if object.site_group %}
+                {{ object.site_group|linkify }}
+              {% else %}
+                <span class="text-muted">Global</span>
+              {% endif %}
+            </td>
+          </tr>
+          <tr>
+            <th scope="row">Description</th>
+            <td>{{ object.description|placeholder }}</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="col col-md-6">
+      <div class="card">
+        <h5 class="card-header">Template Attributes</h5>
+        <table class="table table-hover attr-table">
+          <tr>
+            <th scope="row">Speed (Mbps)</th>
+            <td>{{ object.speed|placeholder }}</td>
+          </tr>
+          <tr>
+            <th scope="row">Duplex</th>
+            <td>{{ object.duplex|placeholder }}</td>
+          </tr>
+          <tr>
+            <th scope="row">MTU</th>
+            <td>{{ object.mtu|placeholder }}</td>
+          </tr>
+          <tr>
+            <th scope="row">Mode</th>
+            <td>{{ object.mode|placeholder }}</td>
+          </tr>
+          <tr>
+            <th scope="row">Enabled</th>
+            <td>{% if object.enabled %}Yes{% else %}No{% endif %}</td>
+          </tr>
+          <tr>
+            <th scope="row">POE Mode</th>
+            <td>{{ object.poe_mode|placeholder }}</td>
+          </tr>
+          <tr>
+            <th scope="row">Untagged VLAN VID</th>
+            <td>{{ object.untagged_vlan_vid|placeholder }}</td>
+          </tr>
+          <tr>
+            <th scope="row">Tagged VLAN VIDs</th>
+            <td>
+              {% if object.tagged_vlans_vids %}
+                {{ object.tagged_vlans_vids|join:", " }}
+              {% else %}
+                <span class="text-muted">None</span>
+              {% endif %}
+            </td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+{% endblock %}
