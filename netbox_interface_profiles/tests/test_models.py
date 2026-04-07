@@ -5,7 +5,8 @@ Test cases for netbox interface profiles models.
 from django.core.exceptions import ValidationError
 
 from django.contrib.contenttypes.models import ContentType
-from dcim.models import DeviceRole, Site, SiteGroup
+from dcim.choices import InterfaceModeChoices, InterfaceTypeChoices
+from dcim.models import Device, DeviceRole, DeviceType, Interface, Manufacturer, Site, SiteGroup
 from ipam.models import VLAN, VLANGroup
 
 from ..models import InterfaceProfile, InterfaceTemplate
@@ -204,3 +205,106 @@ class InterfaceTemplateTestCase(PluginModelTestCase):
         self.assertEqual(resolved_untagged.pk, site_vlan.pk)
         self.assertEqual(len(resolved_tagged), 1)
         self.assertEqual(resolved_tagged[0].pk, site_vlan.pk)
+
+
+class InterfaceProfileAssignmentSignalTestCase(PluginModelTestCase):
+    """Test automatic template application on interface profile assignment."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.profile = InterfaceProfile.objects.create(name="Signal Profile", description="")
+        cls.site_group = SiteGroup.objects.create(name="SG-Signal", slug="sg-signal")
+        cls.site = Site.objects.create(name="Site-Signal", slug="site-signal", group=cls.site_group)
+
+        manufacturer = Manufacturer.objects.create(name="Manufacturer-Signal", slug="manufacturer-signal")
+        device_type = DeviceType.objects.create(
+            manufacturer=manufacturer,
+            model="DeviceType-Signal",
+            slug="devicetype-signal",
+        )
+        role = DeviceRole.objects.create(name="Role-Signal", slug="role-signal")
+
+        cls.device = Device.objects.create(
+            name="Device-Signal",
+            site=cls.site,
+            device_type=device_type,
+            role=role,
+        )
+        cls.interface = Interface.objects.create(
+            device=cls.device,
+            name="eth0",
+            type=InterfaceTypeChoices.TYPE_1GE_FIXED,
+            enabled=False,
+        )
+
+        site_ct = ContentType.objects.get_for_model(Site)
+        cls.site_vlan_group = VLANGroup.objects.create(
+            name="VG-Signal-Site",
+            slug="vg-signal-site",
+            scope_type=site_ct,
+            scope_id=cls.site.pk,
+        )
+        cls.untagged_vlan = VLAN.objects.create(
+            name="VLAN10-Signal",
+            vid=10,
+            site=cls.site,
+            group=cls.site_vlan_group,
+        )
+        cls.tagged_vlan = VLAN.objects.create(
+            name="VLAN20-Signal",
+            vid=20,
+            site=cls.site,
+            group=cls.site_vlan_group,
+        )
+
+    def test_assignment_applies_matching_template_attributes(self):
+        """Assigning a profile should apply matching template attributes."""
+        InterfaceTemplate.objects.create(
+            interface_profile=self.profile,
+            name="Global Access Template",
+            enabled=True,
+            speed=1000,
+            duplex="full",
+            mtu=9000,
+            mode=InterfaceModeChoices.MODE_ACCESS,
+            poe_mode="power-supply",
+            untagged_vlan_vid=10,
+            tagged_vlans_vids=[20],
+        )
+
+        from ..models import InterfaceProfileAssignment
+
+        InterfaceProfileAssignment.objects.create(
+            interface=self.interface,
+            interface_profile=self.profile,
+        )
+
+        self.interface.refresh_from_db()
+        self.assertTrue(self.interface.enabled)
+        self.assertEqual(self.interface.speed, 1000)
+        self.assertEqual(self.interface.duplex, "full")
+        self.assertEqual(self.interface.mtu, 9000)
+        self.assertEqual(self.interface.mode, InterfaceModeChoices.MODE_ACCESS)
+        self.assertEqual(self.interface.poe_mode, "power-supply")
+        self.assertEqual(self.interface.untagged_vlan_id, self.untagged_vlan.pk)
+        self.assertEqual(set(self.interface.tagged_vlans.values_list("pk", flat=True)), {self.tagged_vlan.pk})
+
+    def test_assignment_uses_global_template_when_no_site_group_template_exists(self):
+        """A global template should still apply even when its name differs from the interface."""
+        InterfaceTemplate.objects.create(
+            interface_profile=self.profile,
+            name="Global Access Template",
+            enabled=True,
+            speed=1000,
+        )
+
+        from ..models import InterfaceProfileAssignment
+
+        InterfaceProfileAssignment.objects.create(
+            interface=self.interface,
+            interface_profile=self.profile,
+        )
+
+        self.interface.refresh_from_db()
+        self.assertTrue(self.interface.enabled)
+        self.assertEqual(self.interface.speed, 1000)

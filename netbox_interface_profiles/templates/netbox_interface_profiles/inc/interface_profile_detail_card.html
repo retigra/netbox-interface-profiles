@@ -1,0 +1,69 @@
+<div class="card mb-3">
+  <h5 class="card-header">Interface Profile Automation</h5>
+  {% if profile %}
+    <table class="table table-hover attr-table">
+      <tr>
+        <th scope="row">Assigned Profile</th>
+        <td>
+          <a href="{{ profile.get_absolute_url }}">{{ profile }}</a>
+        </td>
+      </tr>
+      <tr>
+        <th scope="row">Matching Interface Templates</th>
+        <td>
+          {% if matching_interface_templates %}
+            {% for template in matching_interface_templates %}
+              <div class="mb-1">
+                <a href="{{ template.get_absolute_url }}">{{ template.name }}</a>
+                {% if template.site_group %}
+                  <span class="text-muted">(site group: {{ template.site_group }})</span>
+                {% else %}
+                  <span class="text-muted">(global)</span>
+                {% endif %}
+              </div>
+            {% endfor %}
+          {% else %}
+            <span class="text-muted">No matching interface templates found.</span>
+          {% endif %}
+        </td>
+      </tr>
+
+      <tr>
+        <th scope="row">Matching Config Templates</th>
+        <td>
+          {% if matching_config_templates %}
+            {% for template in matching_config_templates %}
+              <div class="mb-1">
+                <a href="{{ template.get_absolute_url }}">{{ template.name }}</a>
+                {% if template.device_type %}
+                  <span class="text-muted">(device type: {{ template.device_type }})</span>
+                {% else %}
+                  <span class="text-muted">(platform default)</span>
+                {% endif %}
+              </div>
+            {% endfor %}
+          {% else %}
+            <span class="text-muted">No matching config templates found.</span>
+          {% endif %}
+        </td>
+      </tr>
+
+      <tr>
+        <th scope="row">Assigned Config Preview</th>
+        <td>
+          {% if assigned_config_template %}
+            <pre class="mb-0">
+              <code>{{ assigned_config_preview }}</code>
+            </pre>
+          {% else %}
+            <span class="text-muted">No config template assigned.</span>
+          {% endif %}
+        </td>
+      </tr>
+    </table>
+  {% else %}
+    <div class="card-body">
+      <p class="text-muted mb-0">No interface profile assigned.</p>
+    </div>
+  {% endif %}
+</div>

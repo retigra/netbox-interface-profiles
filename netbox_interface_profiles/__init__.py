@@ -29,5 +29,12 @@ class NetBoxInterfaceProfilesConfig(PluginConfig):
 
     url = "https://github.com/wouterdebruijn/netbox-interface-profiles"
 
+    def ready(self) -> None:
+        """Register plugin signal handlers."""
+        super().ready()
+
+        # Importing connects Django signal receivers.
+        from . import signals  # noqa: F401
+
 
 config = NetBoxInterfaceProfilesConfig

@@ -3,10 +3,10 @@ Test cases for netbox interface profiles views.
 """
 
 from dcim.choices import InterfaceTypeChoices
-from dcim.models import Device, DeviceRole, DeviceType, Interface, Manufacturer, Site
+from dcim.models import Device, DeviceRole, DeviceType, Interface, Manufacturer, Platform, Site, SiteGroup
 from django.urls import reverse
 
-from ..models import InterfaceProfile, InterfaceProfileAssignment
+from ..models import InterfaceProfile, InterfaceProfileAssignment, InterfaceTemplate, ProfileConfigTemplate
 from ..testing import PluginViewTestCase
 from ..testing.utils import disable_warnings, get_random_string
 
@@ -272,3 +272,71 @@ class DeviceInterfaceProfileTabViewTestCase(PluginViewTestCase):
         self.assertContains(response, matching_profile.name)
         self.assertContains(response, unscoped_profile.name)
         self.assertNotContains(response, non_matching_profile.name)
+
+
+class InterfaceDetailCardTestCase(PluginViewTestCase):
+    """Test the interface detail card rendered by template extension."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.site_group = SiteGroup.objects.create(name="SiteGroup 1", slug="site-group-1")
+        cls.site = Site.objects.create(name="Site 2", slug="site-2", group=cls.site_group)
+        manufacturer = Manufacturer.objects.create(name="Manufacturer 2", slug="manufacturer-2")
+        cls.device_type = DeviceType.objects.create(
+            manufacturer=manufacturer,
+            model="Device Type 2",
+            slug="device-type-2",
+        )
+        platform = Platform.objects.create(name="Platform 1", slug="platform-1")
+        role = DeviceRole.objects.create(name="Device Role 2", slug="device-role-2")
+        cls.device = Device.objects.create(
+            name="Device 2",
+            site=cls.site,
+            device_type=cls.device_type,
+            role=role,
+            platform=platform,
+        )
+        cls.interface = Interface.objects.create(
+            device=cls.device,
+            name="eth0",
+            type=InterfaceTypeChoices.TYPE_1GE_FIXED,
+        )
+
+        cls.profile = InterfaceProfile.objects.create(name="Interface Detail Profile", description="")
+        InterfaceProfileAssignment.objects.create(interface=cls.interface, interface_profile=cls.profile)
+
+        cls.interface_template = InterfaceTemplate.objects.create(
+            interface_profile=cls.profile,
+            name="Global Access Template",
+            enabled=True,
+            speed=1000,
+        )
+        cls.config_template = ProfileConfigTemplate.objects.create(
+            interface_profile=cls.profile,
+            platform=platform,
+            device_type=cls.device_type,
+            name="Config Detail Template",
+            description="",
+            template_code="interface {{ interface.name }}\\n description {{ profile.name }}",
+        )
+
+    def test_interface_detail_card_renders_assignment_templates_and_preview(self):
+        self.add_permissions(
+            "dcim.view_interface",
+            "dcim.view_device",
+            "netbox_interface_profiles.view_interfaceprofile",
+            "netbox_interface_profiles.view_interfaceprofileassignment",
+            "netbox_interface_profiles.view_interfacetemplate",
+            "netbox_interface_profiles.view_profileconfigtemplate",
+        )
+
+        url = reverse("dcim:interface", kwargs={"pk": self.interface.pk})
+        response = self.client.get(url)
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, "Interface Profile Automation")
+        self.assertContains(response, self.profile.name)
+        self.assertContains(response, self.interface_template.name)
+        self.assertContains(response, self.config_template.name)
+        self.assertContains(response, "interface eth0")
+        self.assertContains(response, f"description {self.profile.name}")
