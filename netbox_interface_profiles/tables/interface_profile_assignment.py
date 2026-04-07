@@ -14,7 +14,7 @@ INTERFACE_PROFILE_BUTTONS = """
 <span class="dropdown">
         <button
             type="button"
-            class="btn btn-secondary btn-sm dropdown-toggle"
+            class="btn btn-cyan btn-sm dropdown-toggle"
             data-bs-toggle="dropdown"
             aria-haspopup="true"
             aria-expanded="false"

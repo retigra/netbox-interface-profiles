@@ -19,13 +19,10 @@ class InterfaceProfileSerializer(NetBoxModelSerializer):
         model = InterfaceProfile
         fields = (
             "id",
+            "name",
             "url",
             "display",
-            "name",
-            "description",
-            "tags",
-            "custom_fields",
             "created",
             "last_updated",
         )
-        brief_fields = ("id", "url", "display", "name", "description")
+        brief_fields = ("id", "name", "url", "display")

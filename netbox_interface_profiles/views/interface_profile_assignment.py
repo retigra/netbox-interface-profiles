@@ -122,6 +122,11 @@ class DeviceInterfaceProfileTabView(DeviceComponentsView):
             assign_form = forms.DeviceBulkAssignProfileForm(request.POST)
             if assign_form.is_valid():
                 profile = assign_form.cleaned_data["interface_profile"]
+
+                if not profile:
+                    messages.error(request, _("Please select a valid Interface Profile."))
+                    return redirect(request.path)
+
                 created = updated = 0
                 for iface in interfaces:
                     _assignment, was_created = models.InterfaceProfileAssignment.objects.update_or_create(

@@ -12,6 +12,6 @@ from ..serializers import InterfaceProfileAssignmentSerializer
 class InterfaceProfileAssignmentViewSet(NetBoxModelViewSet):
     """API viewset for InterfaceProfileAssignment."""
 
-    queryset = InterfaceProfileAssignment.objects.select_related("interface__device", "interface_profile")
+    queryset = InterfaceProfileAssignment.objects.select_related("interface", "interface_profile")
     serializer_class = InterfaceProfileAssignmentSerializer
     filterset_class = filtersets.InterfaceProfileAssignmentFilterSet

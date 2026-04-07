@@ -69,6 +69,7 @@ class DeviceBulkAssignProfileForm(forms.Form):
     interface_profile = DynamicModelChoiceField(
         queryset=InterfaceProfile.objects.all(),
         label=_("Interface Profile"),
+        required=False,
     )
 
 
