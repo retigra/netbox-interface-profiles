@@ -10,6 +10,26 @@ from .. import filtersets, forms, models, tables
 class InterfaceProfileView(generic.ObjectView):
     queryset = models.InterfaceProfile.objects.all()
 
+    def get_extra_context(self, request, instance):
+        """Provide related template querysets for the detail page."""
+        related_interface_templates = models.InterfaceTemplate.objects.restrict(request.user, "view").filter(
+            interface_profile=instance
+        )
+        related_config_templates = models.ProfileConfigTemplate.objects.restrict(request.user, "view").filter(
+            interface_profile=instance
+        )
+
+        return {
+            "related_interface_templates": related_interface_templates.select_related("site_group").order_by(
+                "name",
+                "pk",
+            ),
+            "related_config_templates": related_config_templates.select_related(
+                "platform",
+                "device_type",
+            ).order_by("name", "pk"),
+        }
+
 
 class InterfaceProfileListView(generic.ObjectListView):
     queryset = models.InterfaceProfile.objects.all()

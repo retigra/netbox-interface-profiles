@@ -17,9 +17,22 @@ class InterfaceProfileViewTestCase(PluginViewTestCase):
     @classmethod
     def setUpTestData(cls):
         """Create three InterfaceProfile instances."""
+        cls.platform = Platform.objects.create(name="View Platform", slug="view-platform")
         InterfaceProfile.objects.create(name="View Profile 1", description="First")
         InterfaceProfile.objects.create(name="View Profile 2", description="Second")
-        InterfaceProfile.objects.create(name="View Profile 3", description="")
+        cls.profile = InterfaceProfile.objects.create(name="View Profile 3", description="")
+        InterfaceTemplate.objects.create(
+            interface_profile=cls.profile,
+            name="Related Interface Template",
+            enabled=True,
+        )
+        ProfileConfigTemplate.objects.create(
+            interface_profile=cls.profile,
+            platform=cls.platform,
+            name="Related Config Template",
+            description="",
+            template_code="interface {{ interface.name|default('N/A') }}",
+        )
 
     def test_list_interface_profiles(self):
         """Test the InterfaceProfile list view returns HTTP 200."""
@@ -40,13 +53,21 @@ class InterfaceProfileViewTestCase(PluginViewTestCase):
     def test_view_interface_profile_detail(self):
         """Test the InterfaceProfile detail view renders the correct object."""
         self.add_permissions("netbox_interface_profiles.view_interfaceprofile")
+        self.add_permissions(
+            "netbox_interface_profiles.view_interfacetemplate",
+            "netbox_interface_profiles.view_profileconfigtemplate",
+        )
 
-        instance = InterfaceProfile.objects.first()
+        instance = self.profile
         url = reverse("plugins:netbox_interface_profiles:interfaceprofile", kwargs={"pk": instance.pk})
         response = self.client.get(url)
 
         self.assertHttpStatus(response, 200)
         self.assertEqual(response.context["object"], instance)
+        self.assertContains(response, "Related Interface Templates")
+        self.assertContains(response, "Related Interface Template")
+        self.assertContains(response, "Related Config Templates")
+        self.assertContains(response, "Related Config Template")
 
     def test_create_interface_profile(self):
         """Test creating an InterfaceProfile via the add form."""

@@ -1,26 +1,96 @@
 {% extends 'generic/object.html' %}
 
 {% block content %}
-<div class="row mb-3">
+  <div class="row mb-3">
     <div class="col col-md-6">
-        <div class="card">
-            <h5 class="card-header">Interface Profile</h5>
-            <table class="table table-hover attr-table">
-                <tr>
-                    <th scope="row">Name</th>
-                    <td>{{ object.name }}</td>
-                </tr>
-                <tr>
-                    <th scope="row">Description</th>
-                    <td>{{ object.description|default:'&mdash;' }}</td>
-                </tr>
-            </table>
-        </div>
-        {% include 'inc/panels/custom_fields.html' %}
+      <div class="card">
+        <h5 class="card-header">Interface Profile</h5>
+        <table class="table table-hover attr-table">
+          <tr>
+            <th scope="row">Name</th>
+            <td>{{ object.name }}</td>
+          </tr>
+          <tr>
+            <th scope="row">Description</th>
+            <td>{{ object.description|default:'&mdash;' }}</td>
+          </tr>
+        </table>
+      </div>
+      {% include 'inc/panels/custom_fields.html' %}
     </div>
     <div class="col col-md-6">
-        {% include 'inc/panels/tags.html' %}
-        {% include 'inc/panels/comments.html' %}
+      {% include 'inc/panels/tags.html' %}
+      {% include 'inc/panels/comments.html' %}
     </div>
-</div>
-{% endblock content %}
+  </div>
+
+  <div class="row mb-3">
+    <div class="col col-12">
+      <div class="card">
+        <h5 class="card-header">Related Interface Templates</h5>
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Site Group</th>
+              <th>Speed (Mbps)</th>
+              <th>Mode</th>
+              <th>Enabled</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for template in related_interface_templates %}
+              <tr>
+                <td>
+                  <a href="{{ template.get_absolute_url }}">{{ template.name }}</a>
+                </td>
+                <td>{{ template.site_group|default:'&mdash;' }}</td>
+                <td>{{ template.speed|default:'&mdash;' }}</td>
+                <td>{{ template.mode|default:'&mdash;' }}</td>
+                <td>{{ template.enabled|yesno:'Yes,No' }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="5" class="text-muted">No related interface templates found.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="row mb-3">
+    <div class="col col-12">
+      <div class="card">
+        <h5 class="card-header">Related Config Templates</h5>
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Platform</th>
+              <th>Device Type</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for template in related_config_templates %}
+              <tr>
+                <td>
+                  <a href="{{ template.get_absolute_url }}">{{ template.name }}</a>
+                </td>
+                <td>{{ template.platform }}</td>
+                <td>{{ template.device_type|default:'&mdash;' }}</td>
+                <td>{{ template.description|default:'&mdash;' }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="4" class="text-muted">No related config templates found.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+{% endblock %}
