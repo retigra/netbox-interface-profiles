@@ -3,12 +3,10 @@ ProfileConfigTemplate serializer for netbox interface profiles API.
 """
 
 from dcim.api.serializers import DeviceTypeSerializer, PlatformSerializer
-from dcim.models import DeviceType, Platform
-from netbox.api.fields import SerializedPKRelatedField
 from netbox.api.serializers import NetBoxModelSerializer
 from rest_framework import serializers
 
-from ...models import InterfaceProfile, ProfileConfigTemplate
+from ...models import ProfileConfigTemplate
 from .interface_profile import InterfaceProfileSerializer
 
 
@@ -18,22 +16,14 @@ class ProfileConfigTemplateSerializer(NetBoxModelSerializer):
     url = serializers.HyperlinkedIdentityField(
         view_name="plugins-api:netbox_interface_profiles-api:profileconfigtemplate-detail"
     )
-    interface_profile = SerializedPKRelatedField(
-        queryset=InterfaceProfile.objects.all(),
-        serializer=InterfaceProfileSerializer,
+    interface_profile = InterfaceProfileSerializer(
         nested=True,
     )
-    platform = SerializedPKRelatedField(
-        queryset=Platform.objects.all(),
-        serializer=PlatformSerializer,
+    platform = PlatformSerializer(
         nested=True,
     )
-    device_type = SerializedPKRelatedField(
-        queryset=DeviceType.objects.all(),
-        serializer=DeviceTypeSerializer,
+    device_type = DeviceTypeSerializer(
         nested=True,
-        allow_null=True,
-        required=False,
     )
 
     class Meta:
