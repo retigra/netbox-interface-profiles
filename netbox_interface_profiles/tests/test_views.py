@@ -178,6 +178,74 @@ class InterfaceProfileFormValidationTestCase(PluginViewTestCase):
         self.assertEqual(InterfaceProfile.objects.filter(description="Some description").count(), 0)
 
 
+class InterfaceProfileInterfacesTabViewTestCase(PluginViewTestCase):
+    """Test the Interface Profile detail interfaces tab view."""
+
+    @classmethod
+    def setUpTestData(cls):
+        site = Site.objects.create(name="Interfaces Site", slug="interfaces-site")
+        manufacturer = Manufacturer.objects.create(name="Interfaces Manufacturer", slug="interfaces-manufacturer")
+        device_type = DeviceType.objects.create(
+            manufacturer=manufacturer,
+            model="Interfaces Device Type",
+            slug="interfaces-device-type",
+        )
+        role = DeviceRole.objects.create(name="Interfaces Device Role", slug="interfaces-device-role")
+
+        cls.device = Device.objects.create(
+            name="Interfaces Device",
+            site=site,
+            device_type=device_type,
+            role=role,
+        )
+        cls.interface = Interface.objects.create(
+            device=cls.device,
+            name="xe-0/0/0",
+            type=InterfaceTypeChoices.TYPE_1GE_FIXED,
+        )
+        cls.profile = InterfaceProfile.objects.create(name="Interfaces Tab Profile", description="")
+        InterfaceProfileAssignment.objects.create(interface=cls.interface, interface_profile=cls.profile)
+
+    def test_interface_profile_interfaces_tab_renders_controls_and_rows(self):
+        self.add_permissions(
+            "netbox_interface_profiles.view_interfaceprofile",
+            "netbox_interface_profiles.view_interfaceprofileassignment",
+            "dcim.view_interface",
+            "dcim.view_device",
+        )
+
+        url = reverse(
+            "plugins:netbox_interface_profiles:interfaceprofile_interfaces",
+            kwargs={"pk": self.profile.pk},
+        )
+        response = self.client.get(url)
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, "Quick search")
+        self.assertContains(response, "Saved filter")
+        self.assertContains(response, "Configure Table")
+        self.assertContains(response, self.interface.name)
+        self.assertContains(response, self.device.name)
+
+    def test_interface_profile_interfaces_tab_supports_device_name_search(self):
+        self.add_permissions(
+            "netbox_interface_profiles.view_interfaceprofile",
+            "netbox_interface_profiles.view_interfaceprofileassignment",
+            "dcim.view_interface",
+            "dcim.view_device",
+        )
+
+        url = reverse(
+            "plugins:netbox_interface_profiles:interfaceprofile_interfaces",
+            kwargs={"pk": self.profile.pk},
+        )
+        response = self.client.get(url, {"q": self.device.name})
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, self.interface.name)
+        self.assertContains(response, self.device.name)
+
+
 class DeviceInterfaceProfileTabViewTestCase(PluginViewTestCase):
     """Test the device interface profiles tab view."""
 

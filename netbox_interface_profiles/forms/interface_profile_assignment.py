@@ -2,7 +2,7 @@
 InterfaceProfileAssignment forms for netbox interface profiles.
 """
 
-from dcim.models import Interface
+from dcim.models import Device, Interface
 from django import forms
 from django.utils.translation import gettext_lazy as _
 from netbox.forms import (
@@ -121,4 +121,9 @@ class InterfaceProfileAssignmentFilterSetForm(NetBoxModelFilterSetForm):
         queryset=InterfaceProfile.objects.all(),
         required=False,
         label=_("Interface Profile"),
+    )
+    device_id = DynamicModelMultipleChoiceField(
+        queryset=Device.objects.all(),
+        required=False,
+        label=_("Device"),
     )

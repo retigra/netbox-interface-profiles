@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import gettext_lazy as _
 from django.views import View
 from netbox.views import generic
+from utilities.views import ViewTab, register_model_view
 
 from .. import filtersets, forms, models, tables
 from ..jobs import SyncInterfaceProfileJob
@@ -70,6 +71,31 @@ class InterfaceProfileBulkDeleteView(generic.BulkDeleteView):
     queryset = models.InterfaceProfile.objects.all()
     filterset = filtersets.InterfaceProfileFilterSet
     table = tables.InterfaceProfileTable
+
+
+@register_model_view(models.InterfaceProfile, name="interfaces", path="interfaces")
+class InterfaceProfileInterfacesTabView(generic.ObjectChildrenView):
+    """Tab on the Interface Profile detail page listing assigned interfaces."""
+
+    queryset = models.InterfaceProfile.objects.all()
+    child_model = models.InterfaceProfileAssignment
+    table = tables.InterfaceProfileAssignmentTable
+    filterset = filtersets.InterfaceProfileAssignmentFilterSet
+    filterset_form = forms.InterfaceProfileAssignmentFilterSetForm
+    actions = ()
+    tab = ViewTab(
+        label="Interfaces",
+        badge=lambda obj: models.InterfaceProfileAssignment.objects.filter(interface_profile=obj).count(),
+        permission="netbox_interface_profiles.view_interfaceprofileassignment",
+    )
+
+    def get_children(self, request, parent):
+        return (
+            models.InterfaceProfileAssignment.objects.restrict(request.user, "view")
+            .filter(interface_profile=parent)
+            .select_related("interface__device", "interface_profile")
+            .order_by("interface__device__name", "interface__name", "pk")
+        )
 
 
 class InterfaceProfileSyncView(View):

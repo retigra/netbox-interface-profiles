@@ -34,6 +34,11 @@ urlpatterns = (
     ),
     path("interface-profiles/<int:pk>/", views.InterfaceProfileView.as_view(), name="interfaceprofile"),
     path(
+        "interface-profiles/<int:pk>/interfaces/",
+        views.InterfaceProfileInterfacesTabView.as_view(),
+        name="interfaceprofile_interfaces",
+    ),
+    path(
         "interface-profiles/<int:pk>/sync/",
         views.InterfaceProfileSyncView.as_view(),
         name="interfaceprofile_sync",
