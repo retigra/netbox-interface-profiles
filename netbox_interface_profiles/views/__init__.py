@@ -15,6 +15,7 @@ from .interface_profile import (
     InterfaceProfileDeleteView,
     InterfaceProfileEditView,
     InterfaceProfileListView,
+    InterfaceProfileSyncView,
     InterfaceProfileView,
 )
 from .interface_profile_assignment import (
@@ -67,6 +68,7 @@ __all__ = (
     "InterfaceProfileDeleteView",
     "InterfaceProfileEditView",
     "InterfaceProfileListView",
+    "InterfaceProfileSyncView",
     "InterfaceProfileView",
     "InterfaceTemplateBulkDeleteView",
     "InterfaceTemplateBulkEditView",

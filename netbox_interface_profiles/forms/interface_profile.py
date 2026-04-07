@@ -78,3 +78,14 @@ class InterfaceProfileFilterSetForm(NetBoxModelFilterSetForm):
         required=False,
         label=_("Device Roles"),
     )
+
+
+class InterfaceProfileSyncForm(forms.Form):
+    """Form for triggering profile-wide interface synchronization."""
+
+    dry_run = forms.BooleanField(
+        required=False,
+        initial=True,
+        label=_("Dry run"),
+        help_text=_("Compute and log diffs without committing interface changes to the database."),
+    )

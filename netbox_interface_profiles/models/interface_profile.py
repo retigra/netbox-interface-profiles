@@ -5,9 +5,10 @@ InterfaceProfile model for netbox interface profiles.
 from django.db import models
 from django.urls import reverse
 from netbox.models import NetBoxModel
+from netbox.models.features import JobsMixin
 
 
-class InterfaceProfile(NetBoxModel):
+class InterfaceProfile(JobsMixin, NetBoxModel):
     """
     Represents a named interface configuration profile with an optional description.
     Can be scoped to one or more device roles to limit availability in assignment UI.

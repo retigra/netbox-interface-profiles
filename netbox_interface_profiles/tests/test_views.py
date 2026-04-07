@@ -361,3 +361,31 @@ class InterfaceDetailCardTestCase(PluginViewTestCase):
         self.assertContains(response, self.config_template.name)
         self.assertContains(response, "interface eth0")
         self.assertContains(response, f"description {self.profile.name}")
+
+
+class InterfaceProfileSyncViewTestCase(PluginViewTestCase):
+    """Test queueing profile synchronization jobs from InterfaceProfile detail."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.profile = InterfaceProfile.objects.create(name="Sync Profile", description="")
+
+    def test_sync_view_requires_change_interface_permission(self):
+        url = reverse(
+            "plugins:netbox_interface_profiles:interfaceprofile_sync",
+            kwargs={"pk": self.profile.pk},
+        )
+        with disable_warnings("django.request"):
+            response = self.client.get(url)
+            self.assertHttpStatus(response, 403)
+
+    def test_sync_view_queues_job(self):
+        self.add_permissions("dcim.change_interface")
+
+        url = reverse(
+            "plugins:netbox_interface_profiles:interfaceprofile_sync",
+            kwargs={"pk": self.profile.pk},
+        )
+        response = self.client.post(url, {"dry_run": "on"}, follow=False)
+
+        self.assertEqual(response.status_code, 302)

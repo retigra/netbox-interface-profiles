@@ -1,0 +1,17 @@
+{% extends 'generic/object_edit.html' %}
+{% load form_helpers %}
+
+{% block title %}
+  Synchronize {{ object }}
+{% endblock %}
+
+{% block form %}
+  <div class="card">
+    <h5 class="card-header">Synchronize Interface Profile</h5>
+    <div class="card-body">
+      {% render_errors form %}
+      <p class="text-muted">Queue a NetBox background job to synchronize all interfaces assigned to this profile.</p>
+      {% render_field form.dry_run %}
+    </div>
+  </div>
+{% endblock %}
