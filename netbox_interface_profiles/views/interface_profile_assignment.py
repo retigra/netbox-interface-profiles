@@ -172,9 +172,7 @@ def _get_applicable_profiles(device: Device):
         # or with matching device role if device has one
         if device.role:
             return (
-                models.InterfaceProfile.objects.filter(
-                    Q(device_roles__isnull=True) | Q(device_roles=device.device_role)
-                )
+                models.InterfaceProfile.objects.filter(Q(device_roles__isnull=True) | Q(device_roles=device.role))
                 .distinct()
                 .order_by("name")
             )

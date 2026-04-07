@@ -8,70 +8,115 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
-        ('dcim', '0226_modulebay_rebuild_tree'),
-        ('extras', '0134_owner'),
+        ("dcim", "0226_modulebay_rebuild_tree"),
+        ("extras", "0134_owner"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='InterfaceProfile',
+            name="InterfaceProfile",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False)),
-                ('created', models.DateTimeField(auto_now_add=True, null=True)),
-                ('last_updated', models.DateTimeField(auto_now=True, null=True)),
-                ('custom_field_data', models.JSONField(blank=True, default=dict, encoder=utilities.json.CustomFieldJSONEncoder)),
-                ('name', models.CharField(max_length=100)),
-                ('description', models.TextField(blank=True)),
-                ('tags', taggit.managers.TaggableManager(through='extras.TaggedItem', to='extras.Tag')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False)),
+                ("created", models.DateTimeField(auto_now_add=True, null=True)),
+                ("last_updated", models.DateTimeField(auto_now=True, null=True)),
+                (
+                    "custom_field_data",
+                    models.JSONField(blank=True, default=dict, encoder=utilities.json.CustomFieldJSONEncoder),
+                ),
+                ("name", models.CharField(max_length=100)),
+                ("description", models.TextField(blank=True)),
+                ("tags", taggit.managers.TaggableManager(through="extras.TaggedItem", to="extras.Tag")),
             ],
             options={
-                'verbose_name': 'Interface Profile',
-                'verbose_name_plural': 'Interface Profiles',
-                'ordering': ('name',),
+                "verbose_name": "Interface Profile",
+                "verbose_name_plural": "Interface Profiles",
+                "ordering": ("name",),
             },
             bases=(netbox.models.deletion.DeleteMixin, models.Model),
         ),
         migrations.CreateModel(
-            name='InterfaceProfileAssignment',
+            name="InterfaceProfileAssignment",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False)),
-                ('created', models.DateTimeField(auto_now_add=True, null=True)),
-                ('last_updated', models.DateTimeField(auto_now=True, null=True)),
-                ('custom_field_data', models.JSONField(blank=True, default=dict, encoder=utilities.json.CustomFieldJSONEncoder)),
-                ('interface', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='profile_assignment', to='dcim.interface')),
-                ('interface_profile', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='interface_assignments', to='netbox_interface_profiles.interfaceprofile')),
-                ('tags', taggit.managers.TaggableManager(through='extras.TaggedItem', to='extras.Tag')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False)),
+                ("created", models.DateTimeField(auto_now_add=True, null=True)),
+                ("last_updated", models.DateTimeField(auto_now=True, null=True)),
+                (
+                    "custom_field_data",
+                    models.JSONField(blank=True, default=dict, encoder=utilities.json.CustomFieldJSONEncoder),
+                ),
+                (
+                    "interface",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="profile_assignment",
+                        to="dcim.interface",
+                    ),
+                ),
+                (
+                    "interface_profile",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="interface_assignments",
+                        to="netbox_interface_profiles.interfaceprofile",
+                    ),
+                ),
+                ("tags", taggit.managers.TaggableManager(through="extras.TaggedItem", to="extras.Tag")),
             ],
             options={
-                'verbose_name': 'Interface Profile Assignment',
-                'verbose_name_plural': 'Interface Profile Assignments',
-                'ordering': ('interface',),
+                "verbose_name": "Interface Profile Assignment",
+                "verbose_name_plural": "Interface Profile Assignments",
+                "ordering": ("interface",),
             },
             bases=(netbox.models.deletion.DeleteMixin, models.Model),
         ),
         migrations.CreateModel(
-            name='ProfileConfigTemplate',
+            name="ProfileConfigTemplate",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False)),
-                ('created', models.DateTimeField(auto_now_add=True, null=True)),
-                ('last_updated', models.DateTimeField(auto_now=True, null=True)),
-                ('custom_field_data', models.JSONField(blank=True, default=dict, encoder=utilities.json.CustomFieldJSONEncoder)),
-                ('name', models.CharField(max_length=100)),
-                ('description', models.TextField(blank=True)),
-                ('template_code', models.TextField()),
-                ('device_type', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='interface_profile_config_templates', to='dcim.devicetype')),
-                ('interface_profile', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='config_templates', to='netbox_interface_profiles.interfaceprofile')),
-                ('platform', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='interface_profile_config_templates', to='dcim.platform')),
-                ('tags', taggit.managers.TaggableManager(through='extras.TaggedItem', to='extras.Tag')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False)),
+                ("created", models.DateTimeField(auto_now_add=True, null=True)),
+                ("last_updated", models.DateTimeField(auto_now=True, null=True)),
+                (
+                    "custom_field_data",
+                    models.JSONField(blank=True, default=dict, encoder=utilities.json.CustomFieldJSONEncoder),
+                ),
+                ("name", models.CharField(max_length=100)),
+                ("description", models.TextField(blank=True)),
+                ("template_code", models.TextField()),
+                (
+                    "device_type",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="interface_profile_config_templates",
+                        to="dcim.devicetype",
+                    ),
+                ),
+                (
+                    "interface_profile",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="config_templates",
+                        to="netbox_interface_profiles.interfaceprofile",
+                    ),
+                ),
+                (
+                    "platform",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="interface_profile_config_templates",
+                        to="dcim.platform",
+                    ),
+                ),
+                ("tags", taggit.managers.TaggableManager(through="extras.TaggedItem", to="extras.Tag")),
             ],
             options={
-                'verbose_name': 'Profile Config Template',
-                'verbose_name_plural': 'Profile Config Templates',
-                'ordering': ('interface_profile', 'platform', 'name'),
+                "verbose_name": "Profile Config Template",
+                "verbose_name_plural": "Profile Config Templates",
+                "ordering": ("interface_profile", "platform", "name"),
             },
             bases=(netbox.models.deletion.DeleteMixin, models.Model),
         ),

@@ -2,11 +2,10 @@
 Test cases for netbox interface profiles models.
 """
 
-from django.core.exceptions import ValidationError
-
-from django.contrib.contenttypes.models import ContentType
 from dcim.choices import InterfaceModeChoices, InterfaceTypeChoices
 from dcim.models import Device, DeviceRole, DeviceType, Interface, Manufacturer, Site, SiteGroup
+from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
 from ipam.models import VLAN, VLANGroup
 
 from ..models import InterfaceProfile, InterfaceTemplate
