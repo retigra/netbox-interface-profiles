@@ -21,7 +21,7 @@ services:
       start_period: 90s
       timeout: 3s
       interval: 15s
-    entrypoint: ["/opt/netbox/docker-entrypoint.sh"]
+    entrypoint: [ "/opt/netbox/docker-entrypoint.sh" ]
     command:
       - /opt/netbox/venv/bin/python
       - /opt/netbox/netbox/manage.py
