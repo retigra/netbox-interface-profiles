@@ -23,11 +23,11 @@ class InterfaceProfileView(generic.ObjectView):
             interface_profile=instance
         )
         related_config_templates = models.ProfileConfigTemplate.objects.restrict(request.user, "view").filter(
-            interface_profile=instance
+            interface_template__interface_profile=instance
         )
 
         return {
-            "related_interface_templates": related_interface_templates.select_related("site_group").order_by(
+            "related_interface_templates": related_interface_templates.select_related("scope_type").order_by(
                 "name",
                 "pk",
             ),

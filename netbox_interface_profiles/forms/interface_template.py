@@ -2,8 +2,10 @@
 InterfaceTemplate forms for netbox interface profiles.
 """
 
-from dcim.models import SiteGroup
+from dcim.models import Site, SiteGroup
 from django import forms
+from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ObjectDoesNotExist
 from django.utils.translation import gettext_lazy as _
 from netbox.forms import (
     NetBoxModelBulkEditForm,
@@ -11,10 +13,15 @@ from netbox.forms import (
     NetBoxModelForm,
     NetBoxModelImportForm,
 )
-from utilities.forms.fields import DynamicModelChoiceField, DynamicModelMultipleChoiceField
+from utilities.forms import get_field_value
+from utilities.forms.fields import ContentTypeChoiceField, DynamicModelChoiceField, DynamicModelMultipleChoiceField
 from utilities.forms.rendering import FieldSet
+from utilities.forms.widgets import HTMXSelect
+from utilities.templatetags.builtins.filters import bettertitle
 
 from ..models import InterfaceProfile, InterfaceTemplate
+
+INTERFACE_TEMPLATE_SCOPE_TYPES = ("site", "sitegroup")
 
 
 class InterfaceTemplateForm(NetBoxModelForm):
@@ -24,11 +31,18 @@ class InterfaceTemplateForm(NetBoxModelForm):
         queryset=InterfaceProfile.objects.all(),
         label=_("Interface Profile"),
     )
-    site_group = DynamicModelChoiceField(
-        queryset=SiteGroup.objects.all(),
+    scope_type = ContentTypeChoiceField(
+        queryset=ContentType.objects.filter(app_label="dcim", model__in=INTERFACE_TEMPLATE_SCOPE_TYPES),
+        widget=HTMXSelect(),
         required=False,
-        label=_("Site Group"),
-        help_text=_("Optional scope. If null, template is globally reusable."),
+        label=_("Scope type"),
+    )
+    scope = DynamicModelChoiceField(
+        label=_("Scope"),
+        queryset=Site.objects.none(),
+        required=False,
+        disabled=True,
+        selector=True,
     )
 
     # Speed, duplex, MTU
@@ -92,7 +106,7 @@ class InterfaceTemplateForm(NetBoxModelForm):
     )
 
     fieldsets = (
-        FieldSet("interface_profile", "site_group", name=_("Scope")),
+        FieldSet("interface_profile", "scope_type", "scope", name=_("Scope")),
         FieldSet("name", "description", "tags", name=_("Basic Information")),
         FieldSet("speed", "duplex", "mtu", "enabled", name=_("Physical Configuration")),
         FieldSet("mode", name=_("Layer 2 Configuration")),
@@ -106,7 +120,7 @@ class InterfaceTemplateForm(NetBoxModelForm):
             "name",
             "description",
             "interface_profile",
-            "site_group",
+            "scope_type",
             "speed",
             "duplex",
             "mtu",
@@ -119,10 +133,36 @@ class InterfaceTemplateForm(NetBoxModelForm):
         )
 
     def __init__(self, *args, **kwargs):
+        instance = kwargs.get("instance")
+        initial = kwargs.get("initial", {})
+
+        if instance is not None and instance.scope:
+            initial["scope"] = instance.scope
+            kwargs["initial"] = initial
+
         super().__init__(*args, **kwargs)
+
         tagged_vlans = self.initial.get("tagged_vlans_vids")
         if isinstance(tagged_vlans, list):
             self.initial["tagged_vlans_vids"] = ",".join(str(vid) for vid in tagged_vlans)
+
+        if scope_type_id := get_field_value(self, "scope_type"):
+            try:
+                scope_type = ContentType.objects.get(pk=scope_type_id)
+                model = scope_type.model_class()
+                self.fields["scope"].queryset = model.objects.all()
+                self.fields["scope"].widget.attrs["selector"] = model._meta.label_lower
+                self.fields["scope"].disabled = False
+                self.fields["scope"].label = _(bettertitle(model._meta.verbose_name))
+            except ObjectDoesNotExist:
+                pass
+
+            if self.instance and scope_type_id != self.instance.scope_type_id:
+                self.initial["scope"] = None
+
+    def clean(self):
+        super().clean()
+        self.instance.scope = self.cleaned_data.get("scope")
 
     def clean_tagged_vlans_vids(self):
         """Convert comma-separated VIDs string to JSON list."""
@@ -131,7 +171,6 @@ class InterfaceTemplateForm(NetBoxModelForm):
             return []
         try:
             vids = [int(vid.strip()) for vid in data.split(",") if vid.strip()]
-            # Validate VLAN VID range
             for vid in vids:
                 if not (0 <= vid <= 4094):
                     raise forms.ValidationError(
@@ -160,7 +199,6 @@ class InterfaceTemplateImportForm(NetBoxModelImportForm):
             "name",
             "description",
             "interface_profile",
-            "site_group",
             "speed",
             "duplex",
             "mtu",
@@ -186,10 +224,18 @@ class InterfaceTemplateBulkEditForm(NetBoxModelBulkEditForm):
         required=False,
         label=_("Interface Profile"),
     )
-    site_group = DynamicModelChoiceField(
-        queryset=SiteGroup.objects.all(),
+    scope_type = ContentTypeChoiceField(
+        queryset=ContentType.objects.filter(app_label="dcim", model__in=INTERFACE_TEMPLATE_SCOPE_TYPES),
+        widget=HTMXSelect(method="post", attrs={"hx-select": "#form_fields"}),
         required=False,
-        label=_("Site Group"),
+        label=_("Scope type"),
+    )
+    scope = DynamicModelChoiceField(
+        label=_("Scope"),
+        queryset=Site.objects.none(),
+        required=False,
+        disabled=True,
+        selector=True,
     )
     speed = forms.IntegerField(required=False, min_value=0, label=_("Speed (Mbps)"))
     duplex = forms.ChoiceField(
@@ -217,7 +263,21 @@ class InterfaceTemplateBulkEditForm(NetBoxModelBulkEditForm):
     description = forms.CharField(max_length=200, required=False)
 
     class Meta:
-        nullable_fields = ("description", "site_group", "speed", "duplex", "mtu", "mode", "poe_mode")
+        nullable_fields = ("description", "scope", "speed", "duplex", "mtu", "mode", "poe_mode")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if scope_type_id := get_field_value(self, "scope_type"):
+            try:
+                scope_type = ContentType.objects.get(pk=scope_type_id)
+                model = scope_type.model_class()
+                self.fields["scope"].queryset = model.objects.all()
+                self.fields["scope"].widget.attrs["selector"] = model._meta.label_lower
+                self.fields["scope"].disabled = False
+                self.fields["scope"].label = _(bettertitle(model._meta.verbose_name))
+            except ObjectDoesNotExist:
+                pass
 
 
 class InterfaceTemplateFilterSetForm(NetBoxModelFilterSetForm):
@@ -232,7 +292,12 @@ class InterfaceTemplateFilterSetForm(NetBoxModelFilterSetForm):
         required=False,
         label=_("Interface Profile"),
     )
-    site_group_id = DynamicModelMultipleChoiceField(
+    scope_site_id = DynamicModelMultipleChoiceField(
+        queryset=Site.objects.all(),
+        required=False,
+        label=_("Site"),
+    )
+    scope_site_group_id = DynamicModelMultipleChoiceField(
         queryset=SiteGroup.objects.all(),
         required=False,
         label=_("Site Group"),

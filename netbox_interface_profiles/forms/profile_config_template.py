@@ -9,16 +9,16 @@ from netbox.forms import NetBoxModelBulkEditForm, NetBoxModelFilterSetForm, NetB
 from utilities.forms.fields import DynamicModelChoiceField, DynamicModelMultipleChoiceField
 from utilities.forms.rendering import FieldSet
 
-from ..models import InterfaceProfile, ProfileConfigTemplate
+from ..models import InterfaceTemplate, ProfileConfigTemplate
 from ..widgets import ProfileNameWidget
 
 
 class ProfileConfigTemplateForm(NetBoxModelForm):
     """Create / Edit form for ProfileConfigTemplate."""
 
-    interface_profile = DynamicModelChoiceField(
-        queryset=InterfaceProfile.objects.all(),
-        label=_("Interface Profile"),
+    interface_template = DynamicModelChoiceField(
+        queryset=InterfaceTemplate.objects.all(),
+        label=_("Interface Template"),
     )
     platform = DynamicModelChoiceField(
         queryset=Platform.objects.all(),
@@ -44,7 +44,7 @@ class ProfileConfigTemplateForm(NetBoxModelForm):
     )
 
     fieldsets = (
-        FieldSet("interface_profile", "platform", "device_type", name=_("Scope")),
+        FieldSet("interface_template", "platform", "device_type", name=_("Scope")),
         FieldSet("name", "description", "tags", name=_("Profile Config Template")),
         FieldSet("template_code", name=_("Template")),
     )
@@ -54,7 +54,7 @@ class ProfileConfigTemplateForm(NetBoxModelForm):
         fields = (
             "name",
             "description",
-            "interface_profile",
+            "interface_template",
             "platform",
             "device_type",
             "template_code",
@@ -70,7 +70,7 @@ class ProfileConfigTemplateImportForm(NetBoxModelImportForm):
         fields = (
             "name",
             "description",
-            "interface_profile",
+            "interface_template",
             "platform",
             "device_type",
             "template_code",
@@ -86,10 +86,10 @@ class ProfileConfigTemplateBulkEditForm(NetBoxModelBulkEditForm):
         queryset=ProfileConfigTemplate.objects.all(),
         widget=forms.MultipleHiddenInput(),
     )
-    interface_profile = DynamicModelChoiceField(
-        queryset=InterfaceProfile.objects.all(),
+    interface_template = DynamicModelChoiceField(
+        queryset=InterfaceTemplate.objects.all(),
         required=False,
-        label=_("Interface Profile"),
+        label=_("Interface Template"),
     )
     platform = DynamicModelChoiceField(
         queryset=Platform.objects.all(),
@@ -113,10 +113,10 @@ class ProfileConfigTemplateFilterSetForm(NetBoxModelFilterSetForm):
     model = ProfileConfigTemplate
 
     name = forms.CharField(required=False)
-    interface_profile_id = DynamicModelMultipleChoiceField(
-        queryset=InterfaceProfile.objects.all(),
+    interface_template_id = DynamicModelMultipleChoiceField(
+        queryset=InterfaceTemplate.objects.all(),
         required=False,
-        label=_("Interface Profile"),
+        label=_("Interface Template"),
     )
     platform_id = DynamicModelMultipleChoiceField(
         queryset=Platform.objects.all(),

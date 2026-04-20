@@ -12,7 +12,7 @@ class ProfileConfigTemplateTable(NetBoxTable):
     """Table for listing ProfileConfigTemplate objects."""
 
     name = tables.Column(linkify=True)
-    interface_profile = tables.Column(linkify=True)
+    interface_template = tables.Column(linkify=True)
     platform = tables.Column(linkify=True)
     device_type = tables.Column(linkify=True)
     description = tables.Column()
@@ -23,7 +23,7 @@ class ProfileConfigTemplateTable(NetBoxTable):
             "pk",
             "id",
             "name",
-            "interface_profile",
+            "interface_template",
             "platform",
             "device_type",
             "description",
@@ -31,7 +31,7 @@ class ProfileConfigTemplateTable(NetBoxTable):
         )
         default_columns = (
             "name",
-            "interface_profile",
+            "interface_template",
             "platform",
             "device_type",
             "description",

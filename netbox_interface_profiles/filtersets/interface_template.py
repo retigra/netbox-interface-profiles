@@ -3,7 +3,8 @@ InterfaceTemplate filterset for netbox interface profiles.
 """
 
 import django_filters
-from dcim.models import SiteGroup
+from dcim.models import Site, SiteGroup
+from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from netbox.filtersets import NetBoxModelFilterSet
 
@@ -19,9 +20,15 @@ class InterfaceTemplateFilterSet(NetBoxModelFilterSet):
         field_name="interface_profile",
         queryset=InterfaceProfile.objects.all(),
     )
-    site_group_id = django_filters.ModelMultipleChoiceFilter(
-        field_name="site_group",
+    scope_site_id = django_filters.ModelMultipleChoiceFilter(
+        queryset=Site.objects.all(),
+        method="filter_scope_site",
+        label="Site (ID)",
+    )
+    scope_site_group_id = django_filters.ModelMultipleChoiceFilter(
         queryset=SiteGroup.objects.all(),
+        method="filter_scope_site_group",
+        label="Site Group (ID)",
     )
     speed = django_filters.NumberFilter()
     duplex = django_filters.ChoiceFilter(
@@ -49,7 +56,8 @@ class InterfaceTemplateFilterSet(NetBoxModelFilterSet):
             "name",
             "description",
             "interface_profile_id",
-            "site_group_id",
+            "scope_site_id",
+            "scope_site_group_id",
             "speed",
             "duplex",
             "mtu",
@@ -57,6 +65,20 @@ class InterfaceTemplateFilterSet(NetBoxModelFilterSet):
             "enabled",
             "poe_mode",
         )
+
+    def filter_scope_site(self, queryset, name, value):
+        if not value:
+            return queryset
+        ct = ContentType.objects.get_for_model(Site)
+        ids = [obj.pk for obj in value]
+        return queryset.filter(scope_type=ct, scope_id__in=ids)
+
+    def filter_scope_site_group(self, queryset, name, value):
+        if not value:
+            return queryset
+        ct = ContentType.objects.get_for_model(SiteGroup)
+        ids = [obj.pk for obj in value]
+        return queryset.filter(scope_type=ct, scope_id__in=ids)
 
     def search(self, queryset, name, value):
         """Support global keyword search against name and description fields."""

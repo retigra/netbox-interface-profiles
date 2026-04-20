@@ -7,7 +7,7 @@ from netbox.api.serializers import NetBoxModelSerializer
 from rest_framework import serializers
 
 from ...models import ProfileConfigTemplate
-from .interface_profile import InterfaceProfileSerializer
+from .interface_template import InterfaceTemplateSerializer
 
 
 class ProfileConfigTemplateSerializer(NetBoxModelSerializer):
@@ -16,15 +16,9 @@ class ProfileConfigTemplateSerializer(NetBoxModelSerializer):
     url = serializers.HyperlinkedIdentityField(
         view_name="plugins-api:netbox_interface_profiles-api:profileconfigtemplate-detail"
     )
-    interface_profile = InterfaceProfileSerializer(
-        nested=True,
-    )
-    platform = PlatformSerializer(
-        nested=True,
-    )
-    device_type = DeviceTypeSerializer(
-        nested=True,
-    )
+    interface_template = InterfaceTemplateSerializer(nested=True)
+    platform = PlatformSerializer(nested=True)
+    device_type = DeviceTypeSerializer(nested=True)
 
     class Meta:
         model = ProfileConfigTemplate
@@ -34,7 +28,7 @@ class ProfileConfigTemplateSerializer(NetBoxModelSerializer):
             "display",
             "name",
             "description",
-            "interface_profile",
+            "interface_template",
             "platform",
             "device_type",
             "template_code",
@@ -48,7 +42,7 @@ class ProfileConfigTemplateSerializer(NetBoxModelSerializer):
             "url",
             "display",
             "name",
-            "interface_profile",
+            "interface_template",
             "platform",
             "device_type",
         )

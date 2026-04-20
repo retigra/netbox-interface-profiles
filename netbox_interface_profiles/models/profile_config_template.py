@@ -13,8 +13,8 @@ class ProfileConfigTemplate(NetBoxModel):
     and an optional DeviceType.
     """
 
-    interface_profile = models.ForeignKey(
-        to="netbox_interface_profiles.InterfaceProfile",
+    interface_template = models.ForeignKey(
+        to="netbox_interface_profiles.InterfaceTemplate",
         on_delete=models.CASCADE,
         related_name="config_templates",
     )
@@ -37,7 +37,7 @@ class ProfileConfigTemplate(NetBoxModel):
     )
 
     class Meta:
-        ordering = ("interface_profile", "platform", "name")
+        ordering = ("interface_template", "platform", "name")
         verbose_name = "Profile Config Template"
         verbose_name_plural = "Profile Config Templates"
 

@@ -12,7 +12,7 @@ class InterfaceTemplateView(generic.ObjectView):
 
     queryset = models.InterfaceTemplate.objects.select_related(
         "interface_profile",
-        "site_group",
+        "scope_type",
     )
 
 
@@ -21,7 +21,7 @@ class InterfaceTemplateListView(generic.ObjectListView):
 
     queryset = models.InterfaceTemplate.objects.select_related(
         "interface_profile",
-        "site_group",
+        "scope_type",
     )
     table = tables.InterfaceTemplateTable
     filterset = filtersets.InterfaceTemplateFilterSet

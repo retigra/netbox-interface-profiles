@@ -14,7 +14,7 @@ class InterfaceTemplateViewSet(NetBoxModelViewSet):
 
     queryset = InterfaceTemplate.objects.select_related(
         "interface_profile",
-        "site_group",
+        "scope_type",
     )
     serializer_class = InterfaceTemplateSerializer
     filterset_class = filtersets.InterfaceTemplateFilterSet

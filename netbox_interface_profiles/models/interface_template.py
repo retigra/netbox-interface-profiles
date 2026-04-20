@@ -2,6 +2,7 @@
 InterfaceTemplate model for netbox interface profiles.
 """
 
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.db import models
 from django.urls import reverse
 from netbox.models import NetBoxModel
@@ -23,14 +24,9 @@ class InterfaceTemplate(NetBoxModel):
         on_delete=models.CASCADE,
         related_name="interface_templates",
     )
-    site_group = models.ForeignKey(
-        to="dcim.SiteGroup",
-        on_delete=models.SET_NULL,
-        related_name="interface_templates",
-        null=True,
-        blank=True,
-        help_text="Optional SiteGroup scope. If null, template is globally reusable.",
-    )
+    scope_type = models.ForeignKey(to="contenttypes.ContentType", on_delete=models.CASCADE, blank=True, null=True)
+    scope_id = models.PositiveBigIntegerField(blank=True, null=True)
+    scope = GenericForeignKey(ct_field="scope_type", fk_field="scope_id")
 
     # Template identification
     name = models.CharField(max_length=100)

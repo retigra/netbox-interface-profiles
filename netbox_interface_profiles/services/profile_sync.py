@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from typing import Any, cast
 
+from dcim.models import Site, SiteGroup
+from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Case, IntegerField, Q, Value, When
 from ipam.models import VLAN
 
 from ..models import InterfaceProfile, InterfaceProfileAssignment, InterfaceTemplate
@@ -21,17 +23,37 @@ SYNC_SCALAR_FIELDS = (
 
 
 def _get_matching_template(assignment: InterfaceProfileAssignment) -> InterfaceTemplate | None:
-    """Return the best matching interface template for an assignment."""
+    """Return the best matching interface template for an assignment.
+
+    Priority order: site-scoped > site-group-scoped > global (no scope).
+    """
     interface = cast(Any, assignment.interface)
-    site_group_id = getattr(interface.device.site, "group_id", None)
+    site = interface.device.site
+    site_group = getattr(site, "group", None)
 
-    templates = InterfaceTemplate.objects.filter(interface_profile=assignment.interface_profile)
-    if site_group_id:
-        templates = templates.filter(Q(site_group_id=site_group_id) | Q(site_group__isnull=True))
-    else:
-        templates = templates.filter(site_group__isnull=True)
+    site_ct = ContentType.objects.get_for_model(Site)
+    site_group_ct = ContentType.objects.get_for_model(SiteGroup)
 
-    return templates.order_by("site_group_id", "pk").first()
+    scope_q = Q(scope_type__isnull=True)  # global
+    if site:
+        scope_q |= Q(scope_type=site_ct, scope_id=site.pk)
+    if site_group:
+        scope_q |= Q(scope_type=site_group_ct, scope_id=site_group.pk)
+
+    templates = (
+        InterfaceTemplate.objects.filter(interface_profile=assignment.interface_profile)
+        .filter(scope_q)
+        .annotate(
+            scope_priority=Case(
+                When(scope_type=site_ct, then=Value(0)),
+                When(scope_type=site_group_ct, then=Value(1)),
+                default=Value(2),
+                output_field=IntegerField(),
+            )
+        )
+    )
+
+    return templates.order_by("scope_priority", "pk").first()
 
 
 def _capture_tagged_vlans(interface) -> list[VLAN]:

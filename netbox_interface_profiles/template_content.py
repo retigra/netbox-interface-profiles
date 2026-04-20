@@ -4,6 +4,8 @@ Template extensions for netbox interface profiles.
 
 from __future__ import annotations
 
+from dcim.models import Site, SiteGroup
+from django.contrib.contenttypes.models import ContentType
 from django.db.models import Case, IntegerField, Q, Value, When
 from jinja2 import Environment
 from netbox.plugins import PluginTemplateExtension
@@ -51,31 +53,35 @@ class InterfaceProfileDetailCard(PluginTemplateExtension):
         assigned_config_preview = ""
 
         if profile:
-            site_group_id = getattr(interface.device.site, "group_id", None)
-            interface_templates = InterfaceTemplate.objects.filter(interface_profile=profile)
-            if site_group_id:
-                interface_templates = interface_templates.filter(
-                    Q(site_group_id=site_group_id) | Q(site_group__isnull=True)
-                )
-            else:
-                interface_templates = interface_templates.filter(site_group__isnull=True)
+            site = interface.device.site
+            site_group = getattr(site, "group", None)
+            site_ct = ContentType.objects.get_for_model(Site)
+            site_group_ct = ContentType.objects.get_for_model(SiteGroup)
+
+            scope_q = Q(scope_type__isnull=True)  # global
+            if site:
+                scope_q |= Q(scope_type=site_ct, scope_id=site.pk)
+            if site_group:
+                scope_q |= Q(scope_type=site_group_ct, scope_id=site_group.pk)
+
+            interface_templates = InterfaceTemplate.objects.filter(interface_profile=profile).filter(scope_q)
 
             matching_interface_templates = list(
-                interface_templates.order_by(
-                    Case(
-                        When(site_group_id=site_group_id, then=Value(0)),
-                        default=Value(1),
+                interface_templates.annotate(
+                    scope_priority=Case(
+                        When(scope_type=site_ct, then=Value(0)),
+                        When(scope_type=site_group_ct, then=Value(1)),
+                        default=Value(2),
                         output_field=IntegerField(),
-                    ),
-                    "pk",
-                )
+                    )
+                ).order_by("scope_priority", "pk")
             )
             if matching_interface_templates:
                 assigned_interface_template = matching_interface_templates[0]
 
             if interface.device.platform is not None:
                 config_templates = ProfileConfigTemplate.objects.filter(
-                    interface_profile=profile,
+                    interface_template__interface_profile=profile,
                     platform=interface.device.platform,
                 )
                 config_templates = config_templates.filter(

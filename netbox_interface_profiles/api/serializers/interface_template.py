@@ -2,7 +2,10 @@
 InterfaceTemplate serializer for netbox interface profiles API.
 """
 
-from dcim.api.serializers import SiteGroupSerializer
+from dcim.api.serializers import SiteGroupSerializer, SiteSerializer
+from dcim.models import Site, SiteGroup
+from django.contrib.contenttypes.models import ContentType
+from netbox.api.fields import ContentTypeField
 from netbox.api.serializers import NetBoxModelSerializer
 from rest_framework import serializers
 
@@ -17,7 +20,13 @@ class InterfaceTemplateSerializer(NetBoxModelSerializer):
         view_name="plugins-api:netbox_interface_profiles-api:interfacetemplate-detail"
     )
     interface_profile = InterfaceProfileSerializer(nested=True)
-    site_group = SiteGroupSerializer(nested=True, required=False, allow_null=True)
+    scope_type = ContentTypeField(
+        queryset=ContentType.objects.filter(app_label="dcim", model__in=("site", "sitegroup")),
+        required=False,
+        allow_null=True,
+    )
+    scope_id = serializers.IntegerField(required=False, allow_null=True)
+    scope = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = InterfaceTemplate
@@ -28,7 +37,9 @@ class InterfaceTemplateSerializer(NetBoxModelSerializer):
             "name",
             "description",
             "interface_profile",
-            "site_group",
+            "scope_type",
+            "scope_id",
+            "scope",
             "speed",
             "duplex",
             "mtu",
@@ -43,3 +54,13 @@ class InterfaceTemplateSerializer(NetBoxModelSerializer):
             "last_updated",
         )
         brief_fields = ("id", "url", "display", "name")
+
+    def get_scope(self, obj):
+        if obj.scope is None:
+            return None
+        request = self.context.get("request")
+        if isinstance(obj.scope, Site):
+            return SiteSerializer(obj.scope, nested=True, context={"request": request}).data
+        if isinstance(obj.scope, SiteGroup):
+            return SiteGroupSerializer(obj.scope, nested=True, context={"request": request}).data
+        return str(obj.scope)

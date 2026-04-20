@@ -16,10 +16,10 @@
             <td>{{ object.interface_profile|linkify }}</td>
           </tr>
           <tr>
-            <th scope="row">Site Group</th>
+            <th scope="row">Scope</th>
             <td>
-              {% if object.site_group %}
-                {{ object.site_group|linkify }}
+              {% if object.scope %}
+                {{ object.scope|linkify }}
               {% else %}
                 <span class="text-muted">Global</span>
               {% endif %}

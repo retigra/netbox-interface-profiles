@@ -23,7 +23,7 @@ class ProfileConfigTemplateIndex(SearchIndex):
     )
     display_attrs = (
         "name",
-        "interface_profile",
+        "interface_template",
         "platform",
         "device_type",
     )

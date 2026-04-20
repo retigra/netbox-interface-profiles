@@ -23,5 +23,5 @@ class InterfaceTemplateIndex(SearchIndex):
     display_attrs = (
         "name",
         "interface_profile",
-        "site_group",
+        "scope",
     )
