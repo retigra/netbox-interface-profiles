@@ -204,9 +204,12 @@ def _get_applicable_profiles(device: Device):
     # Has platform: filter by config template scope first
     profiles = (
         models.InterfaceProfile.objects.filter(
-            config_templates__platform=device.platform,
+            interface_templates__config_templates__platform=device.platform,
         )
-        .filter(Q(config_templates__device_type__isnull=True) | Q(config_templates__device_type=device.device_type))
+        .filter(
+            Q(interface_templates__config_templates__device_type__isnull=True)
+            | Q(interface_templates__config_templates__device_type=device.device_type)
+        )
         .distinct()
         .order_by("name")
     )
