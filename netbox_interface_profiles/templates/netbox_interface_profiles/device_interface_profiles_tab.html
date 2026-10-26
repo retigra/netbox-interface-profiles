@@ -9,27 +9,38 @@
     </a>
   </div>
   {% endif %}
-  {{ block.super }}
+  {% block table_controls %}
+    {% include 'dcim/device/inc/interface_table_controls.html' with table_modal='DeviceInterfaceTable_config' %}
+  {% endblock table_controls %}
+  <form method="post">
+    {% csrf_token %}
+    <div class="card">
+      <div class="htmx-container table-responsive" id="object_list">
+        {% include 'htmx/table.html' %}
+      </div>
+      {% comment %}
+      The profile picker is a plain <select> rather than the form's API-backed widget: the
+      API widget lists every profile and wraps itself in a flex container that collapses it
+      to its content width. The form's queryset is already narrowed to the device's role.
+      {% endcomment %}
+      <div class="p-2 border-top d-flex flex-wrap align-items-center gap-2 d-print-none">
+        <label for="bulk-assign-profile" class="form-label mb-0">{% trans "Interface Profile" %}</label>
+        <div style="width: 20rem; max-width: 100%;">
+          <select name="interface_profile" id="bulk-assign-profile" class="form-select" required>
+            <option value="">{% trans "Select a profile" %}</option>
+            {% for profile in bulk_assign_form.fields.interface_profile.queryset %}
+            <option value="{{ profile.pk }}" title="{{ profile.description }}">{{ profile.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <button type="submit" name="_assign" class="btn btn-primary" {% if not perms.netbox_interface_profiles.add_interfaceprofileassignment %}disabled{% endif %}>
+          <i class="mdi mdi-check-all me-1" aria-hidden="true"></i>{% trans "Assign Profile" %}
+        </button>
+        <button type="submit" name="_remove" class="btn btn-outline-danger" formnovalidate {% if not perms.netbox_interface_profiles.delete_interfaceprofileassignment %}disabled{% endif %}>
+          <i class="mdi mdi-delete me-1" aria-hidden="true"></i>{% trans "Remove Assignment" %}
+        </button>
+        <small class="text-muted">{% trans "Applies to the ticked interfaces." %}</small>
+      </div>
+    </div>
+  </form>
 {% endblock content %}
-
-{% block table_controls %}
-  {% include 'dcim/device/inc/interface_table_controls.html' with table_modal='DeviceInterfaceTable_config' %}
-{% endblock table_controls %}
-
-{% block bulk_controls %}
-  <div class="row g-2 align-items-end">
-      <div class="col-auto">
-          {{ bulk_assign_form.interface_profile }}
-      </div>
-      <div class="col-auto">
-          <button type="submit" name="_assign" class="btn btn-warning" {% if not perms.netbox_interface_profiles.add_interfaceprofileassignment %}disabled{% endif %}>
-              <i class="mdi mdi-check-all"></i> {% trans "Assign Profile" %}
-          </button>
-      </div>
-      <div class="col-auto">
-          <button type="submit" name="_remove" class="btn btn-danger" {% if not perms.netbox_interface_profiles.delete_interfaceprofileassignment %}disabled{% endif %}>
-              <i class="mdi mdi-delete"></i> {% trans "Remove Assignment" %}
-          </button>
-      </div>
-  </div>
-{% endblock bulk_controls %}
