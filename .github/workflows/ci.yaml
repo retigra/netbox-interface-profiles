@@ -34,7 +34,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:17-alpine
         env:
           POSTGRES_DB: netbox
           POSTGRES_USER: netbox
@@ -73,7 +73,7 @@ jobs:
 
       - name: Clone NetBox
         run: |
-          git clone --depth 1 --branch v4.5 https://github.com/netbox-community/netbox.git
+          git clone --depth 1 --branch v4.7.3 https://github.com/netbox-community/netbox.git
 
       - name: Install NetBox dependencies
         working-directory: netbox

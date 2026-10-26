@@ -2,7 +2,7 @@
 Test cases for netbox interface profiles GraphQL API.
 """
 
-from ..models import InterfaceProfile
+from ..models import InterfaceProfile, InterfaceTemplate
 from ..testing import PluginGraphQLTestCase
 
 
@@ -68,3 +68,46 @@ class InterfaceProfileGraphQLTestCase(PluginGraphQLTestCase):
         self.assertEqual(data["id"], str(instance.pk))
         self.assertIsNotNone(data["created"])
         self.assertIsNotNone(data["last_updated"])
+
+
+class InterfaceProfileTemplateGraphQLTestCase(PluginGraphQLTestCase):
+    """Test InterfaceTemplate GraphQL queries (exposed as interface_profile_template)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.profile = InterfaceProfile.objects.create(name="GraphQL Template Profile", description="")
+        cls.template = InterfaceTemplate.objects.create(
+            interface_profile=cls.profile,
+            name="GraphQL Template",
+            mtu=9000,
+            mode="access",
+        )
+
+    def test_query_interface_profile_template_with_relations(self):
+        """Test the plugin template type exposes its own fields and does not collide with dcim's."""
+        self.add_permissions(
+            "netbox_interface_profiles.view_interfaceprofile",
+            "netbox_interface_profiles.view_interfacetemplate",
+        )
+
+        query = """
+        query {
+            interface_profile_template_list {
+                id
+                name
+                mtu
+                mode
+                interface_profile { id name }
+            }
+        }
+        """
+
+        response = self.execute_query(query)
+        self.assertIsNone(response.get("errors"))
+
+        data = response["data"]["interface_profile_template_list"]
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["name"], self.template.name)
+        self.assertEqual(data[0]["mtu"], 9000)
+        self.assertEqual(data[0]["mode"], "access")
+        self.assertEqual(data[0]["interface_profile"]["id"], str(self.profile.pk))

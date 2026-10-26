@@ -55,7 +55,7 @@ class InterfaceProfileAssignmentForm(NetBoxModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Filter profiles based on the interface's device role if editing existing assignment
-        if self.instance and self.instance.interface:
+        if self.instance.interface_id:
             self.fields["interface_profile"].queryset = get_interface_profile_queryset(self.instance.interface)
 
 

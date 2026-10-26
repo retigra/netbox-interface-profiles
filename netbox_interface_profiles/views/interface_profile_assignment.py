@@ -141,7 +141,7 @@ class DeviceInterfaceProfileTabView(DeviceComponentsView):
         interfaces = Interface.objects.filter(device__in=devices, pk__in=selected_pks)
 
         if "_assign" in request.POST:
-            assign_form = forms.DeviceBulkAssignProfileForm(request.POST)
+            assign_form = forms.DeviceBulkAssignProfileForm(device=device, data=request.POST)
             if assign_form.is_valid():
                 profile = assign_form.cleaned_data["interface_profile"]
 

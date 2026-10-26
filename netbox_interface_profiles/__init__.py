@@ -23,8 +23,8 @@ class NetBoxInterfaceProfilesConfig(PluginConfig):
     author_email = "wouter@retigra.nl"
     version = __version__
     base_url = "netbox-interface-profiles"
-    min_version = "4.5.0"
-    max_version = "4.5.99"
+    min_version = "4.7.0"
+    max_version = "4.7.99"
     graphql_schema = "graphql.schema"
 
     url = "https://github.com/wouterdebruijn/netbox-interface-profiles"

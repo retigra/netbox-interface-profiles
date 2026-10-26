@@ -21,13 +21,13 @@ class InterfaceProfileViewTestCase(PluginViewTestCase):
         InterfaceProfile.objects.create(name="View Profile 1", description="First")
         InterfaceProfile.objects.create(name="View Profile 2", description="Second")
         cls.profile = InterfaceProfile.objects.create(name="View Profile 3", description="")
-        InterfaceTemplate.objects.create(
+        interface_template = InterfaceTemplate.objects.create(
             interface_profile=cls.profile,
             name="Related Interface Template",
             enabled=True,
         )
         ProfileConfigTemplate.objects.create(
-            interface_profile=cls.profile,
+            interface_template=interface_template,
             platform=cls.platform,
             name="Related Config Template",
             description="",
@@ -345,7 +345,7 @@ class DeviceInterfaceProfileTabViewTestCase(PluginViewTestCase):
         self.add_permissions("netbox_interface_profiles.view_interfaceprofileassignment")
 
         matching_profile = InterfaceProfile.objects.create(name="Role Matched", description="")
-        matching_profile.device_roles.add(self.interface.device.device_role)
+        matching_profile.device_roles.add(self.interface.device.role)
 
         other_role = DeviceRole.objects.create(name="Other Role", slug="other-role")
         non_matching_profile = InterfaceProfile.objects.create(name="Role Not Matched", description="")
@@ -403,7 +403,7 @@ class InterfaceDetailCardTestCase(PluginViewTestCase):
             speed=1000,
         )
         cls.config_template = ProfileConfigTemplate.objects.create(
-            interface_profile=cls.profile,
+            interface_template=cls.interface_template,
             platform=platform,
             device_type=cls.device_type,
             name="Config Detail Template",

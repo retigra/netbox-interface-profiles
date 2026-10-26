@@ -12,17 +12,17 @@ _Screenshots will be added as features are developed._
 
 ## Compatibility
 
-This plugin requires **NetBox 4.5**.
+This plugin requires **NetBox 4.7**.
 
 | NetBox Version | Plugin Version |
 | -------------- | -------------- |
-| 4.5.x          | 0.1.0          |
+| 4.7.x          | 0.1.0          |
 
 For more detailed compatibility information, see [COMPATIBILITY.md](COMPATIBILITY.md).
 
 ## Dependencies
 
-- NetBox 4.5+
+- NetBox 4.7+
 - Python 3.12 or later
 
 No additional Python packages are required beyond NetBox's core dependencies.

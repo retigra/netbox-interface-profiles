@@ -1,4 +1,4 @@
-FROM netboxcommunity/netbox:v4.5.5
+FROM netboxcommunity/netbox:v4.7.3
 
 COPY ./docker/docker-entrypoint.sh /opt/netbox/docker-entrypoint.sh
 

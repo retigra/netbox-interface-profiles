@@ -43,13 +43,16 @@ REDIS = {
 
 # Security settings (test-only values)
 SECRET_KEY = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-API_TOKEN_PEPPERS = ["test-pepper-for-api-tokens"]
+API_TOKEN_PEPPERS = {1: "test-pepper-for-api-tokens-0123456789abcdefghijklmnopqrstuvwxyz"}
 
 # For testing, allow all hosts
 ALLOWED_HOSTS = ["*"]
 
-# Enable debug mode for testing
-DEBUG = True
+# Debug mode must stay disabled: Django Debug Toolbar refuses to run under the test runner
+DEBUG = False
+
+# Enable developer mode (required for makemigrations)
+DEVELOPER = True
 
 # Plugin configuration
 PLUGINS = [
@@ -123,14 +126,12 @@ SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
 
 # Email configuration (for testing only)
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-EMAIL_SERVER = "localhost"
-EMAIL_PORT = 25
-EMAIL_TIMEOUT = 10
-EMAIL_FROM_EMAIL = "netbox@localhost"
-
-# Exempt all views from login requirement for testing
-EXEMPT_VIEW_PERMISSIONS = ["*"]
+EMAIL = {
+    "SERVER": "localhost",
+    "PORT": 25,
+    "TIMEOUT": 10,
+    "FROM_EMAIL": "netbox@localhost",
+}
 
 # Banner (optional)
 BANNER_TOP = ""
@@ -166,6 +167,3 @@ REMOTE_AUTH_DEFAULT_PERMISSIONS = {}
 # Maintenance mode
 MAINTENANCE_MODE = False
 
-# Storage
-STORAGE_BACKEND = None
-STORAGE_CONFIG = {}

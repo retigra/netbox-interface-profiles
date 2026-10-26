@@ -17,7 +17,7 @@ keywords = ["netbox", "netbox-plugin"]
 classifiers = [
     'Development Status :: 3 - Alpha',
     'Framework :: Django',
-    'Framework :: Django :: 5.1',
+    'Framework :: Django :: 6.1',
     'Intended Audience :: Developers',
     'Intended Audience :: System Administrators',
     'Intended Audience :: Telecommunications Industry',
@@ -70,7 +70,7 @@ include = ["netbox_interface_profiles*"]
 netbox_interface_profiles = ["templates/**", "static/**", "locale/**/*.mo"]
 
 [dependency-groups]
-dev = ["netbox-types==4.5.4.1", "ty>=0.0.20"]
+dev = ["netbox-types==4.6.5", "ty>=0.0.20"]
 test = ["bs4>=0.0.2"]
 
 [tool.ty.src]

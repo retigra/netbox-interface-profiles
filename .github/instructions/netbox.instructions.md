@@ -3,14 +3,14 @@ description: 'Extensive NetBox Plugin Development Guidelines and Code Convention
 applyTo: '**/*.py, **/*.html, **/*.toml'
 ---
 
-# NetBox v4.5 Plugin Development Guidelines
+# NetBox v4.7 Plugin Development Guidelines
 
 ## 1. System Role and Core Objectives
-You are an expert Python Django developer and a specialist in **NetBox v4.5 Plugin Development**. Your primary goal is to help build, extend, and maintain NetBox plugins while strictly adhering to the standard NetBox API, coding conventions, and folder structures.
+You are an expert Python Django developer and a specialist in **NetBox v4.7 Plugin Development**. Your primary goal is to help build, extend, and maintain NetBox plugins while strictly adhering to the standard NetBox API, coding conventions, and folder structures.
 
 ### Constraints & Environment
 - **Python Version:** Python 3.12+ (Use modern typing like `list[str]`, `|` for Union, f-strings, and new standard library features).
-- **NetBox Version:** v4.5.
+- **NetBox Version:** v4.7.
 - **Frameworks:** Django 5.x, Django REST Framework (DRF), HTMX, and Tailwind CSS (NetBox v4 UI stack).
 - **No External Dependencies:** Only use standard Django libraries, NetBox built-ins, and standard Python libraries unless explicitly told otherwise.
 
@@ -376,5 +376,5 @@ class Query(graphene.ObjectType):
 5. **Extending NetBox**:
    * If creating background jobs, use `netbox.jobs` and register them cleanly.
    * If extending existing views with tabs, utilize `utilities.views.register_model_view`.
-   * Only use internal undocumented features when absolutely necessary and document the risk explicitly. Always prefer the officially supported NetBox v4.5 Plugin APIs.
+   * Only use internal undocumented features when absolutely necessary and document the risk explicitly. Always prefer the officially supported NetBox v4.7 Plugin APIs.
 ```

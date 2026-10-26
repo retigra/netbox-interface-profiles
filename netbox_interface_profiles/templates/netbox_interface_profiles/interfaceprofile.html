@@ -35,7 +35,7 @@
           <thead>
             <tr>
               <th>Name</th>
-              <th>Site Group</th>
+              <th>Scope</th>
               <th>Speed (Mbps)</th>
               <th>Mode</th>
               <th>Enabled</th>
@@ -47,7 +47,7 @@
                 <td>
                   <a href="{{ template.get_absolute_url }}">{{ template.name }}</a>
                 </td>
-                <td>{{ template.site_group|default:'&mdash;' }}</td>
+                <td>{{ template.scope|default:'Global' }}</td>
                 <td>{{ template.speed|default:'&mdash;' }}</td>
                 <td>{{ template.mode|default:'&mdash;' }}</td>
                 <td>{{ template.enabled|yesno:'Yes,No' }}</td>

@@ -137,7 +137,7 @@ class InterfaceTemplateTestCase(PluginModelTestCase):
         """Test creating an InterfaceTemplate instance with optional fields."""
         template = InterfaceTemplate.objects.create(
             interface_profile=self.profile,
-            site_group=self.site_group,
+            scope=self.site_group,
             name="Access Port Template",
             description="",
             speed=1000,
@@ -152,7 +152,7 @@ class InterfaceTemplateTestCase(PluginModelTestCase):
 
         self.assertEqual(template.name, "Access Port Template")
         self.assertEqual(template.interface_profile, self.profile)
-        self.assertEqual(template.site_group, self.site_group)
+        self.assertEqual(template.scope, self.site_group)
         self.assertEqual(template.untagged_vlan_vid, 10)
         self.assertEqual(template.tagged_vlans_vids, [20, 30])
 
