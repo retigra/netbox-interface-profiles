@@ -1,19 +1,5 @@
 {% load i18n %}
 
-{% if perms.netbox_interface_profiles.delete_interfaceprofileassignment %}
-  <li>
-    <button
-      type="button"
-      class="dropdown-item"
-      hx-post="{% url 'plugins:netbox_interface_profiles:interfaceprofileassignment_htmx_remove' interface_id=interface.pk %}"
-      hx-swap="none"
-    >
-      <i class="mdi mdi-close-circle-outline"></i> {% trans "Clear Assignment" %}
-    </button>
-  </li>
-  <li><hr class="dropdown-divider"></li>
-{% endif %}
-
 {% for profile in profiles %}
   <li>
     <button
@@ -30,3 +16,17 @@
 {% empty %}
   <li><span class="dropdown-item-text text-muted">{% trans "No applicable profiles" %}</span></li>
 {% endfor %}
+
+{% if perms.netbox_interface_profiles.delete_interfaceprofileassignment %}
+  <li><hr class="dropdown-divider"></li>
+  <li>
+    <button
+      type="button"
+      class="dropdown-item text-danger"
+      hx-post="{% url 'plugins:netbox_interface_profiles:interfaceprofileassignment_htmx_remove' interface_id=interface.pk %}"
+      hx-swap="none"
+    >
+      <i class="mdi mdi-close-circle-outline"></i> {% trans "Clear Assignment" %}
+    </button>
+  </li>
+{% endif %}

@@ -2,13 +2,6 @@
 {% load i18n %}
 
 {% block content %}
-  {% if perms.dcim.view_interface %}
-  <div class="mb-3">
-    <a href="{% url 'dcim:device_interfaces' pk=object.pk %}" class="btn btn-secondary">
-      <i class="mdi mdi-open-in-new"></i> {% trans "Legacy Interfaces View" %}
-    </a>
-  </div>
-  {% endif %}
   {% block table_controls %}
     {% include 'dcim/device/inc/interface_table_controls.html' with table_modal='DeviceInterfaceTable_config' %}
   {% endblock table_controls %}
@@ -40,6 +33,11 @@
           <i class="mdi mdi-delete me-1" aria-hidden="true"></i>{% trans "Remove Assignment" %}
         </button>
         <small class="text-muted">{% trans "Applies to the ticked interfaces." %}</small>
+        {% if perms.dcim.view_interface %}
+        <a href="{% url 'dcim:device_interfaces' pk=object.pk %}" class="btn btn-outline-secondary ms-auto">
+          <i class="mdi mdi-open-in-new me-1" aria-hidden="true"></i>{% trans "Legacy Interfaces View" %}
+        </a>
+        {% endif %}
       </div>
     </div>
   </form>
