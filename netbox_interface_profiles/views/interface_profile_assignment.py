@@ -5,29 +5,22 @@ InterfaceProfileAssignment views for netbox interface profiles.
 from dcim.filtersets import InterfaceFilterSet
 from dcim.forms import InterfaceFilterForm
 from dcim.models import Device, Interface
+from dcim.object_actions import BulkDisconnect
 from dcim.views import DeviceComponentsView
 from django.contrib import messages
-from django.db.models import Q
+from django.db import transaction
+from django.db.models import Prefetch, Q
 from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import gettext_lazy as _
 from django.views import View
-from netbox.object_actions import ObjectAction
+from ipam.models import IPAddress
+from netbox.object_actions import BulkDelete, BulkEdit, BulkRename, DeleteObject, EditObject
 from netbox.views import generic
 from utilities.views import ViewTab, register_model_view
 
 from .. import filtersets, forms, models, tables
-
-
-class DeviceInterfaceTabSelectAction(ObjectAction):
-    """Enable row selection on the device interface profiles tab."""
-
-    name = "bulk_edit"
-    label = "Select"
-    multi = True
-    permissions_required = set()
-    template_name = "buttons/bulk_edit.html"
-
+from ..object_actions import BulkAssignInterfaceProfile, BulkRemoveInterfaceProfile
 
 # ---------------------------------------------------------------------------
 # InterfaceProfileAssignment CRUD views
@@ -107,7 +100,16 @@ class DeviceInterfaceProfileTabView(DeviceComponentsView):
     table = tables.DeviceInterfaceTable
     filterset = InterfaceFilterSet
     filterset_form = InterfaceFilterForm
-    actions = (DeviceInterfaceTabSelectAction,)
+    actions = (
+        EditObject,
+        DeleteObject,
+        BulkEdit,
+        BulkRename,
+        BulkDisconnect,
+        BulkDelete,
+        BulkAssignInterfaceProfile,
+        BulkRemoveInterfaceProfile,
+    )
     template_name = "netbox_interface_profiles/device_interface_profiles_tab.html"
     tab = ViewTab(
         label="Interface Profiles",
@@ -115,41 +117,54 @@ class DeviceInterfaceProfileTabView(DeviceComponentsView):
         permission="netbox_interface_profiles.view_interfaceprofileassignment",
     )
 
+    def get_permitted_actions(self, user, model=None):
+        # Profile actions are permitted on InterfaceProfileAssignment, not on the table's Interface model
+        return [
+            action
+            for action in super().get_permitted_actions(user, model)
+            if user.has_perms(getattr(action, "assignment_permissions", ()))
+        ]
+
     def get_children(self, request, parent):
         devices = _get_devices_for_virtual_chassis(parent)
         return (
             Interface.objects.restrict(request.user, "view")
             .filter(device__in=devices)
             .select_related("profile_assignment__interface_profile")
+            .prefetch_related(
+                Prefetch("ip_addresses", queryset=IPAddress.objects.restrict(request.user)),
+                Prefetch("member_interfaces", queryset=Interface.objects.restrict(request.user)),
+            )
             .order_by("device__name", "name")
         )
 
-    def get_extra_context(self, request, instance):
-        return {
-            "bulk_assign_form": forms.DeviceBulkAssignProfileForm(device=instance),
-        }
-
     def post(self, request, **kwargs):
         device = get_object_or_404(self.queryset, **kwargs)
+        return_url = request.get_full_path()
         selected_pks = request.POST.getlist("pk")
 
         if not selected_pks:
             messages.warning(request, _("No interfaces selected."))
-            return redirect(request.path)
+            return redirect(return_url)
 
         devices = _get_devices_for_virtual_chassis(device)
-        interfaces = Interface.objects.filter(device__in=devices, pk__in=selected_pks)
+        interfaces = Interface.objects.restrict(request.user, "view").filter(device__in=devices, pk__in=selected_pks)
 
         if "_assign" in request.POST:
-            assign_form = forms.DeviceBulkAssignProfileForm(device=device, data=request.POST)
-            if assign_form.is_valid():
-                profile = assign_form.cleaned_data["interface_profile"]
+            if not request.user.has_perms(BulkAssignInterfaceProfile.assignment_permissions):
+                return HttpResponseForbidden()
 
-                if not profile:
-                    messages.error(request, _("Please select a valid Interface Profile."))
-                    return redirect(request.path)
+            assign_form = forms.DeviceBulkAssignProfileForm(
+                device=device,
+                data={"interface_profile": request.POST.get("_assign")},
+            )
+            profile = assign_form.cleaned_data["interface_profile"] if assign_form.is_valid() else None
+            if not profile:
+                messages.error(request, _("Please select a valid Interface Profile."))
+                return redirect(return_url)
 
-                created = updated = 0
+            created = updated = 0
+            with transaction.atomic():
                 for iface in interfaces:
                     _assignment, was_created = models.InterfaceProfileAssignment.objects.update_or_create(
                         interface=iface,
@@ -159,26 +174,30 @@ class DeviceInterfaceProfileTabView(DeviceComponentsView):
                         created += 1
                     else:
                         updated += 1
-                if created:
-                    messages.success(request, _(f"Assigned profile to {created} interface(s)."))
-                if updated:
-                    messages.success(request, _(f"Updated profile for {updated} interface(s)."))
-            else:
-                messages.error(request, _("Please select a valid Interface Profile."))
+            if created:
+                messages.success(
+                    request, _("Assigned {profile} to {count} interface(s).").format(profile=profile, count=created)
+                )
+            if updated:
+                messages.success(
+                    request, _("Updated {count} interface(s) to {profile}.").format(profile=profile, count=updated)
+                )
 
         elif "_remove" in request.POST:
-            assignments = list(
-                models.InterfaceProfileAssignment.objects.select_related("interface", "interface_profile").filter(
-                    interface__in=interfaces
-                )
-            )
-            deleted = 0
-            for assignment in assignments:
-                assignment.delete()
-                deleted += 1
-            messages.success(request, _(f"Removed {deleted} profile assignment(s)."))
+            if not request.user.has_perms(BulkRemoveInterfaceProfile.assignment_permissions):
+                return HttpResponseForbidden()
 
-        return redirect(request.path)
+            assignments = list(
+                models.InterfaceProfileAssignment.objects.restrict(request.user, "delete")
+                .select_related("interface", "interface_profile")
+                .filter(interface__in=interfaces)
+            )
+            with transaction.atomic():
+                for assignment in assignments:
+                    assignment.delete()
+            messages.success(request, _("Removed {count} profile assignment(s).").format(count=len(assignments)))
+
+        return redirect(return_url)
 
 
 def _get_applicable_profiles(device: Device):

@@ -7,6 +7,7 @@ from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import gettext_lazy as _
 from django.views import View
+from netbox.object_actions import BulkDelete, BulkEdit, DeleteObject, EditObject
 from netbox.views import generic
 from utilities.views import ViewTab, register_model_view
 
@@ -16,26 +17,6 @@ from ..jobs import SyncInterfaceProfileJob
 
 class InterfaceProfileView(generic.ObjectView):
     queryset = models.InterfaceProfile.objects.all()
-
-    def get_extra_context(self, request, instance):
-        """Provide related template querysets for the detail page."""
-        related_interface_templates = models.InterfaceTemplate.objects.restrict(request.user, "view").filter(
-            interface_profile=instance
-        )
-        related_config_templates = models.ProfileConfigTemplate.objects.restrict(request.user, "view").filter(
-            interface_template__interface_profile=instance
-        )
-
-        return {
-            "related_interface_templates": related_interface_templates.select_related("scope_type").order_by(
-                "name",
-                "pk",
-            ),
-            "related_config_templates": related_config_templates.select_related(
-                "platform",
-                "device_type",
-            ).order_by("name", "pk"),
-        }
 
 
 class InterfaceProfileListView(generic.ObjectListView):
@@ -82,7 +63,7 @@ class InterfaceProfileInterfacesTabView(generic.ObjectChildrenView):
     table = tables.InterfaceProfileAssignmentTable
     filterset = filtersets.InterfaceProfileAssignmentFilterSet
     filterset_form = forms.InterfaceProfileAssignmentFilterSetForm
-    actions = ()
+    actions = (EditObject, DeleteObject, BulkEdit, BulkDelete)
     tab = ViewTab(
         label="Interfaces",
         badge=lambda obj: models.InterfaceProfileAssignment.objects.filter(interface_profile=obj).count(),

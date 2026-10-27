@@ -65,9 +65,35 @@ class InterfaceProfileViewTestCase(PluginViewTestCase):
         self.assertHttpStatus(response, 200)
         self.assertEqual(response.context["object"], instance)
         self.assertContains(response, "Related Interface Templates")
-        self.assertContains(response, "Related Interface Template")
         self.assertContains(response, "Related Config Templates")
+        self.assertContains(response, reverse("plugins:netbox_interface_profiles:interfacetemplate_list"))
+        self.assertContains(response, reverse("plugins:netbox_interface_profiles:profileconfigtemplate_list"))
+
+    def test_interface_profile_detail_embedded_tables_list_related_templates(self):
+        """The embedded related-template tables only list templates belonging to the profile."""
+        self.add_permissions(
+            "netbox_interface_profiles.view_interfacetemplate",
+            "netbox_interface_profiles.view_profileconfigtemplate",
+        )
+        other_profile = InterfaceProfile.objects.create(name="Unrelated Profile", description="")
+        other_template = InterfaceTemplate.objects.create(interface_profile=other_profile, name="Unrelated Template")
+        ProfileConfigTemplate.objects.create(
+            interface_template=other_template,
+            platform=self.platform,
+            name="Unrelated Config Template",
+            template_code="",
+        )
+        params = {"embedded": "True", "interface_profile_id": self.profile.pk}
+
+        response = self.client.get(reverse("plugins:netbox_interface_profiles:interfacetemplate_list"), params)
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, "Related Interface Template")
+        self.assertNotContains(response, "Unrelated Template")
+
+        response = self.client.get(reverse("plugins:netbox_interface_profiles:profileconfigtemplate_list"), params)
+        self.assertHttpStatus(response, 200)
         self.assertContains(response, "Related Config Template")
+        self.assertNotContains(response, "Unrelated Config Template")
 
     def test_create_interface_profile(self):
         """Test creating an InterfaceProfile via the add form."""
@@ -227,6 +253,46 @@ class InterfaceProfileInterfacesTabViewTestCase(PluginViewTestCase):
         self.assertContains(response, self.interface.name)
         self.assertContains(response, self.device.name)
 
+    def test_interface_profile_interfaces_tab_offers_bulk_actions(self):
+        self.add_permissions(
+            "netbox_interface_profiles.view_interfaceprofile",
+            "netbox_interface_profiles.view_interfaceprofileassignment",
+            "netbox_interface_profiles.change_interfaceprofileassignment",
+            "netbox_interface_profiles.delete_interfaceprofileassignment",
+        )
+
+        url = reverse(
+            "plugins:netbox_interface_profiles:interfaceprofile_interfaces",
+            kwargs={"pk": self.profile.pk},
+        )
+        response = self.client.get(url)
+
+        self.assertHttpStatus(response, 200)
+        assignment = InterfaceProfileAssignment.objects.get(interface=self.interface)
+        self.assertContains(response, f'name="pk" value="{assignment.pk}"')
+        self.assertContains(response, reverse("plugins:netbox_interface_profiles:interfaceprofileassignment_bulk_edit"))
+        self.assertContains(
+            response, reverse("plugins:netbox_interface_profiles:interfaceprofileassignment_bulk_delete")
+        )
+
+    def test_interface_profile_interfaces_tab_hides_bulk_actions_without_permission(self):
+        self.add_permissions(
+            "netbox_interface_profiles.view_interfaceprofile",
+            "netbox_interface_profiles.view_interfaceprofileassignment",
+        )
+
+        url = reverse(
+            "plugins:netbox_interface_profiles:interfaceprofile_interfaces",
+            kwargs={"pk": self.profile.pk},
+        )
+        response = self.client.get(url)
+
+        self.assertHttpStatus(response, 200)
+        self.assertNotContains(response, 'name="pk"')
+        self.assertNotContains(
+            response, reverse("plugins:netbox_interface_profiles:interfaceprofileassignment_bulk_edit")
+        )
+
     def test_interface_profile_interfaces_tab_supports_device_name_search(self):
         self.add_permissions(
             "netbox_interface_profiles.view_interfaceprofile",
@@ -298,6 +364,109 @@ class DeviceInterfaceProfileTabViewTestCase(PluginViewTestCase):
         self.assertContains(response, "Legacy Interfaces View")
         self.assertContains(response, self.profile.get_absolute_url())
         self.assertContains(response, self.profile.name)
+
+    def test_device_interface_profiles_tab_offers_bulk_actions(self):
+        self.add_permissions(
+            "dcim.view_device",
+            "dcim.view_interface",
+            "dcim.change_interface",
+            "dcim.delete_interface",
+            "netbox_interface_profiles.view_interfaceprofileassignment",
+            "netbox_interface_profiles.add_interfaceprofileassignment",
+            "netbox_interface_profiles.change_interfaceprofileassignment",
+            "netbox_interface_profiles.delete_interfaceprofileassignment",
+        )
+
+        url = reverse("dcim:device_interface_profiles", kwargs={"pk": self.interface.device.pk})
+        response = self.client.get(url)
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, f'name="pk" value="{self.interface.pk}"')
+        self.assertContains(response, reverse("dcim:interface_bulk_edit"))
+        self.assertContains(response, reverse("dcim:interface_bulk_rename"))
+        self.assertContains(response, reverse("dcim:interface_bulk_disconnect"))
+        self.assertContains(response, reverse("dcim:interface_bulk_delete"))
+        self.assertContains(response, f'name="_assign" value="{self.profile.pk}"')
+        self.assertContains(response, 'name="_remove"')
+
+    def test_device_interface_profiles_tab_hides_profile_actions_without_permission(self):
+        self.add_permissions(
+            "dcim.view_device",
+            "dcim.view_interface",
+            "dcim.change_interface",
+            "netbox_interface_profiles.view_interfaceprofileassignment",
+        )
+
+        url = reverse("dcim:device_interface_profiles", kwargs={"pk": self.interface.device.pk})
+        response = self.client.get(url)
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, f'name="pk" value="{self.interface.pk}"')
+        self.assertNotContains(response, 'name="_assign"')
+        self.assertNotContains(response, 'name="_remove"')
+
+    def test_device_interface_profiles_tab_bulk_assign(self):
+        self.add_permissions(
+            "dcim.view_device",
+            "dcim.view_interface",
+            "netbox_interface_profiles.view_interfaceprofileassignment",
+            "netbox_interface_profiles.add_interfaceprofileassignment",
+            "netbox_interface_profiles.change_interfaceprofileassignment",
+        )
+        new_profile = InterfaceProfile.objects.create(name="Bulk Profile", description="")
+        other_interface = Interface.objects.get(device=self.interface.device, name="eth1")
+
+        url = reverse("dcim:device_interface_profiles", kwargs={"pk": self.interface.device.pk})
+        response = self.client.post(url, {"pk": [self.interface.pk, other_interface.pk], "_assign": new_profile.pk})
+
+        self.assertHttpStatus(response, 302)
+        self.assertEqual(
+            InterfaceProfileAssignment.objects.filter(interface_profile=new_profile).count(),
+            2,
+        )
+
+    def test_device_interface_profiles_tab_bulk_assign_requires_permission(self):
+        self.add_permissions(
+            "dcim.view_device",
+            "dcim.view_interface",
+            "netbox_interface_profiles.view_interfaceprofileassignment",
+        )
+        new_profile = InterfaceProfile.objects.create(name="Bulk Profile", description="")
+
+        url = reverse("dcim:device_interface_profiles", kwargs={"pk": self.interface.device.pk})
+        response = self.client.post(url, {"pk": [self.interface.pk], "_assign": new_profile.pk})
+
+        self.assertHttpStatus(response, 403)
+        self.assertEqual(
+            InterfaceProfileAssignment.objects.get(interface=self.interface).interface_profile, self.profile
+        )
+
+    def test_device_interface_profiles_tab_bulk_remove(self):
+        self.add_permissions(
+            "dcim.view_device",
+            "dcim.view_interface",
+            "netbox_interface_profiles.view_interfaceprofileassignment",
+            "netbox_interface_profiles.delete_interfaceprofileassignment",
+        )
+
+        url = reverse("dcim:device_interface_profiles", kwargs={"pk": self.interface.device.pk})
+        response = self.client.post(url, {"pk": [self.interface.pk], "_remove": ""})
+
+        self.assertHttpStatus(response, 302)
+        self.assertFalse(InterfaceProfileAssignment.objects.filter(interface=self.interface).exists())
+
+    def test_device_interface_profiles_tab_bulk_remove_requires_permission(self):
+        self.add_permissions(
+            "dcim.view_device",
+            "dcim.view_interface",
+            "netbox_interface_profiles.view_interfaceprofileassignment",
+        )
+
+        url = reverse("dcim:device_interface_profiles", kwargs={"pk": self.interface.device.pk})
+        response = self.client.post(url, {"pk": [self.interface.pk], "_remove": ""})
+
+        self.assertHttpStatus(response, 403)
+        self.assertTrue(InterfaceProfileAssignment.objects.filter(interface=self.interface).exists())
 
     def test_htmx_menu_endpoint_lists_profiles(self):
         self.add_permissions("netbox_interface_profiles.view_interfaceprofileassignment")
