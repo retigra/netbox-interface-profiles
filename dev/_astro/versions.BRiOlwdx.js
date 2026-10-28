@@ -1,0 +1,1 @@
+var e;function t(t){return e??=fetch(`${t}versions.json`).then(e=>e.ok?e.json():null).catch(()=>null),e}async function n(e,t,n){let r=`${e}${n}/`,i=location.pathname.slice(`${e}${t}/`.length);if(!i)return r;let a=r+i;return(await fetch(a,{method:`HEAD`}).catch(()=>null))?.ok?a+location.hash:r}export{n,t};

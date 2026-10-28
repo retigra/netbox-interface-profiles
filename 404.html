@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Page not found</title>
+<script>
+	const root = "/netbox-interface-profiles/";
+	const version = location.pathname.startsWith(root) ? location.pathname.slice(root.length).split('/')[0] : '';
+	fetch(root + 'versions.json')
+		.then((response) => response.json())
+		.then(({ latest, versions }) => (version === 'latest' ? Boolean(latest) : versions.includes(version)))
+		.catch(() => false)
+		.then((known) => location.replace(known ? root + version + '/404.html' : root));
+</script>
+</head>
+<body><a href="/netbox-interface-profiles/">Page not found. Continue to the documentation</a></body>
+</html>
