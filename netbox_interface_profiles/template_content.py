@@ -14,11 +14,10 @@ from .models import InterfaceTemplate, ProfileConfigTemplate
 
 
 class DeviceHeadScripts(PluginTemplateExtension):
-    """Inject plugin JS into the <head> of every Device object page.
+    """Inject plugin JS into the <head> of every page.
 
-    Scoping to 'dcim.device' means head() is called on the Device detail view
-    and all tabs registered via register_model_view (including our own
-    DeviceInterfaceProfileTabView), but not on the Device list view.
+    head() is a global hook, so the script also runs on pages linking to the
+    legacy Device interfaces tab, such as the Interface detail breadcrumb.
     """
 
     def head(self) -> str:

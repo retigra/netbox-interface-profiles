@@ -4,7 +4,7 @@
 {% block extra_table_controls %}
   {{ block.super }}
   {% if perms.dcim.view_interface %}
-    <a href="{% url 'dcim:device_interfaces' pk=object.pk %}" class="btn" title="{% trans "Legacy Interfaces View" %}">
+    <a href="{% url 'dcim:device_interfaces' pk=object.pk %}" class="btn" data-legacy-interfaces title="{% trans "Legacy Interfaces View" %}">
       <i class="mdi mdi-open-in-new" aria-hidden="true"></i>
       <span class="visually-hidden">{% trans "Legacy Interfaces View" %}</span>
     </a>

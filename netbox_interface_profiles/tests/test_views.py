@@ -13,6 +13,7 @@ from ..models import (
     ProfileConfigTemplate,
     ProfileGroup,
 )
+from ..tables.interface_profile_assignment import DEVICE_INTERFACE_BUTTONS
 from ..testing import PluginViewTestCase
 from ..testing.utils import disable_warnings, get_random_string
 
@@ -370,6 +371,36 @@ class DeviceInterfaceProfileTabViewTestCase(PluginViewTestCase):
         self.assertContains(response, "Legacy Interfaces View")
         self.assertContains(response, self.profile.get_absolute_url())
         self.assertContains(response, self.profile.name)
+
+    def test_device_interface_profiles_tab_row_buttons_return_to_tab(self):
+        self.add_permissions(
+            "dcim.view_device",
+            "dcim.view_interface",
+            "dcim.change_interface",
+            "dcim.add_interface",
+            "ipam.add_ipaddress",
+            "netbox_interface_profiles.view_interfaceprofileassignment",
+        )
+
+        device_pk = self.interface.device.pk
+        url = reverse("dcim:device_interface_profiles", kwargs={"pk": device_pk})
+        response = self.client.get(url)
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, f"return_url={url}")
+        self.assertNotContains(response, f"return_url={reverse('dcim:device_interfaces', kwargs={'pk': device_pk})}")
+
+    def test_legacy_interfaces_tab_kept_without_permission(self):
+        self.add_permissions("dcim.view_device", "dcim.view_interface")
+
+        response = self.client.get(self.interface.device.get_absolute_url())
+
+        self.assertHttpStatus(response, 200)
+        self.assertNotContains(response, "remove_device_interface_tab.js")
+
+    def test_device_interface_buttons_replace_every_legacy_return_url(self):
+        # Guards against NetBox changing how INTERFACE_BUTTONS references the legacy tab
+        self.assertNotIn("dcim:device_interfaces", DEVICE_INTERFACE_BUTTONS)
 
     def test_device_interface_profiles_tab_offers_bulk_actions(self):
         self.add_permissions(

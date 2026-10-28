@@ -31,6 +31,12 @@ INTERFACE_PROFILE_BUTTONS = """
 </span>
 """
 
+# NetBox's interface row buttons hardcode the legacy interfaces tab as return URL; point them back to this tab
+DEVICE_INTERFACE_BUTTONS = INTERFACE_BUTTONS.replace(
+    "{% url 'dcim:device_interfaces' pk=object.pk %}",
+    "{% url 'dcim:device_interface_profiles' pk=object.pk %}",
+)
+
 
 class InterfaceProfileAssignmentTable(NetBoxTable):
     """Table for listing InterfaceProfileAssignment objects in CRUD views."""
@@ -87,7 +93,7 @@ class DeviceInterfaceTable(CoreDeviceInterfaceTable):
         default="—",
     )
 
-    actions = columns.ActionsColumn(extra_buttons=INTERFACE_PROFILE_BUTTONS + INTERFACE_BUTTONS)
+    actions = columns.ActionsColumn(extra_buttons=INTERFACE_PROFILE_BUTTONS + DEVICE_INTERFACE_BUTTONS)
 
     class Meta(CoreDeviceInterfaceTable.Meta):
         model = Interface

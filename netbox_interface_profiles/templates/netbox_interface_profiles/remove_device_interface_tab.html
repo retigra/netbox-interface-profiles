@@ -1,3 +1,5 @@
 {% load static %}
 
+{% if perms.netbox_interface_profiles.view_interfaceprofileassignment %}
 <script type="text/javascript" src="{% static 'netbox_interface_profiles/js/remove_device_interface_tab.js' %}"></script>
+{% endif %}
