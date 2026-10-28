@@ -4,9 +4,11 @@
 {% block extra_table_controls %}
   {{ block.super }}
   {% if perms.dcim.view_interface %}
-    <a href="{% url 'dcim:device_interfaces' pk=object.pk %}" class="btn" data-legacy-interfaces title="{% trans "Legacy Interfaces View" %}">
-      <i class="mdi mdi-open-in-new" aria-hidden="true"></i>
-      <span class="visually-hidden">{% trans "Legacy Interfaces View" %}</span>
-    </a>
+    {# Placed next to the Configure Table button by remove_device_interface_tab.js #}
+    <template id="legacy-interfaces-button">
+      <a href="{% url 'dcim:device_interfaces' pk=object.pk %}" class="btn me-1" data-legacy-interfaces>
+        <i class="mdi mdi-table" aria-hidden="true"></i> {% trans "Legacy Interfaces View" %}
+      </a>
+    </template>
   {% endif %}
 {% endblock extra_table_controls %}

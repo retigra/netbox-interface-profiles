@@ -1,5 +1,23 @@
-{% load static %}
+{% load static i18n %}
 
 {% if perms.netbox_interface_profiles.view_interfaceprofileassignment %}
-<script type="text/javascript" src="{% static 'netbox_interface_profiles/js/remove_device_interface_tab.js' %}"></script>
+  <script type="text/javascript" src="{% static 'netbox_interface_profiles/js/remove_device_interface_tab.js' %}"></script>
+  {% if request.resolver_match.view_name == 'dcim:device_interfaces' %}
+    <template id="legacy-interfaces-banner">
+      <div class="alert alert-warning bg-warning-subtle mb-3" role="alert">
+        <div class="d-flex">
+          <div>
+            <i class="mdi mdi-alert p-2" aria-hidden="true"></i>
+          </div>
+          <div>
+            <h4 class="alert-title">{% trans 'Advanced usage' %}</h4>
+            <div class="text-secondary">
+              {% trans 'The Interface Profiles plugin replaces this interfaces tab with the Interface Profiles tab. Please use that instead.' %}
+              <a href="{% url 'dcim:device_interface_profiles' pk=request.resolver_match.kwargs.pk %}" data-legacy-interfaces>{% trans 'Go to Interface Profiles' %}</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+  {% endif %}
 {% endif %}

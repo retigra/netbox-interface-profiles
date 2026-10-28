@@ -56,13 +56,13 @@
      * "Add Components" menu. Links marked data-legacy-interfaces are kept.
      */
     function redirectDeviceInterfacesLinks() {
-        // Leave the legacy view intact when the user deliberately opened it
-        if (isDeviceInterfacesHref(window.location.href)) return;
-
         document.querySelectorAll("a[href]").forEach((link) => {
             if (link.hasAttribute("data-legacy-interfaces")) return;
 
-            const url = new URL(link.getAttribute("href"), window.location.origin);
+            const url = new URL(
+                link.getAttribute("href"),
+                window.location.origin,
+            );
             if (url.origin !== window.location.origin) return;
 
             let changed = false;
@@ -78,7 +78,10 @@
                 const returnTo = new URL(returnUrl, window.location.origin);
                 const returnPath = toInterfaceProfilesPath(returnTo.pathname);
                 if (returnPath) {
-                    url.searchParams.set("return_url", returnPath + returnTo.search);
+                    url.searchParams.set(
+                        "return_url",
+                        returnPath + returnTo.search,
+                    );
                     changed = true;
                 }
             }
@@ -89,8 +92,41 @@
         });
     }
 
+    /**
+     * Show the legacy interfaces banner (rendered server-side as a template
+     * element) above the quick search of the table controls.
+     */
+    function showLegacyInterfacesBanner() {
+        const banner = document.getElementById("legacy-interfaces-banner");
+        const controls = document.getElementById("quicksearch")?.closest(
+            ".row",
+        );
+        if (!banner || !controls) return;
+
+        controls.before(banner.content.cloneNode(true));
+    }
+
+    /**
+     * Show the legacy interfaces button (rendered server-side as a template
+     * element) left of the Configure Table button of the table controls.
+     */
+    function showLegacyInterfacesButton() {
+        const button = document.getElementById("legacy-interfaces-button");
+        const controls = document.querySelector("#results > .ms-auto");
+        if (!button || !controls) return;
+
+        controls.prepend(button.content.cloneNode(true));
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
+        // Keep the legacy tab visible while the user is on it, but point out the profiles tab
+        if (isDeviceInterfacesHref(window.location.href)) {
+            showLegacyInterfacesBanner();
+            return;
+        }
+
         removeDeviceInterfacesTab();
+        showLegacyInterfacesButton();
         redirectDeviceInterfacesLinks();
     });
 })();

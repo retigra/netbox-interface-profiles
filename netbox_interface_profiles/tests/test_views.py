@@ -390,6 +390,23 @@ class DeviceInterfaceProfileTabViewTestCase(PluginViewTestCase):
         self.assertContains(response, f"return_url={url}")
         self.assertNotContains(response, f"return_url={reverse('dcim:device_interfaces', kwargs={'pk': device_pk})}")
 
+    def test_legacy_interfaces_tab_renders_banner(self):
+        self.add_permissions(
+            "dcim.view_device",
+            "dcim.view_interface",
+            "netbox_interface_profiles.view_interfaceprofileassignment",
+        )
+
+        device_pk = self.interface.device.pk
+        response = self.client.get(reverse("dcim:device_interfaces", kwargs={"pk": device_pk}))
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, 'id="legacy-interfaces-banner"')
+        self.assertContains(response, reverse("dcim:device_interface_profiles", kwargs={"pk": device_pk}))
+
+        response = self.client.get(reverse("dcim:device_interface_profiles", kwargs={"pk": device_pk}))
+        self.assertNotContains(response, 'id="legacy-interfaces-banner"')
+
     def test_legacy_interfaces_tab_kept_without_permission(self):
         self.add_permissions("dcim.view_device", "dcim.view_interface")
 
