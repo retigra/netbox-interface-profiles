@@ -13,7 +13,7 @@ from ..models import ProfileConfigTemplate
 if TYPE_CHECKING:
     from dcim.graphql.types import DeviceTypeType, PlatformType
 
-    from .interface_template import InterfaceProfileTemplateType
+    from .interface_template import InterfaceRoleTemplateType
 
 
 @strawberry_django.type(
@@ -24,7 +24,7 @@ class ProfileConfigTemplateType(NetBoxObjectType):
     """GraphQL type for ProfileConfigTemplate model."""
 
     interface_template: Annotated[
-        "InterfaceProfileTemplateType", strawberry.lazy("netbox_interface_profiles.graphql.interface_template")
+        "InterfaceRoleTemplateType", strawberry.lazy("netbox_interface_profiles.graphql.interface_template")
     ]
     platform: Annotated["PlatformType", strawberry.lazy("dcim.graphql.types")]
     device_type: Annotated["DeviceTypeType", strawberry.lazy("dcim.graphql.types")] | None

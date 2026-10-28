@@ -8,7 +8,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from netbox.filtersets import NetBoxModelFilterSet
 
-from ..models import InterfaceProfile, InterfaceTemplate
+from ..models import InterfaceRole, InterfaceTemplate
 
 
 class InterfaceTemplateFilterSet(NetBoxModelFilterSet):
@@ -16,9 +16,9 @@ class InterfaceTemplateFilterSet(NetBoxModelFilterSet):
 
     name = django_filters.CharFilter(lookup_expr="icontains")
     description = django_filters.CharFilter(lookup_expr="icontains")
-    interface_profile_id = django_filters.ModelMultipleChoiceFilter(
-        field_name="interface_profile",
-        queryset=InterfaceProfile.objects.all(),
+    interface_role_id = django_filters.ModelMultipleChoiceFilter(
+        field_name="interface_role",
+        queryset=InterfaceRole.objects.all(),
     )
     scope_site_id = django_filters.ModelMultipleChoiceFilter(
         queryset=Site.objects.all(),
@@ -55,7 +55,7 @@ class InterfaceTemplateFilterSet(NetBoxModelFilterSet):
             "id",
             "name",
             "description",
-            "interface_profile_id",
+            "interface_role_id",
             "scope_site_id",
             "scope_site_group_id",
             "speed",

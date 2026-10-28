@@ -29,28 +29,28 @@ def _menu_item(model_name: str, link_text: str) -> PluginMenuItem:
     )
 
 
-# Items follow the model relations: groups contain profiles, which are assigned to interfaces
-profiles = (
-    _menu_item("profilegroup", "Profile Groups"),
-    _menu_item("interfaceprofile", "Interface Profiles"),
-    _menu_item("interfaceprofileassignment", "Assignments"),
+# Items follow the model relations: groups contain roles, which are assigned to interfaces
+roles = (
+    _menu_item("rolegroup", "Role Groups"),
+    _menu_item("interfacerole", "Interface Roles"),
+    _menu_item("interfaceroleassignment", "Assignments"),
     PluginMenuItem(
-        link="plugins:netbox_interface_profiles:profilesync_list",
+        link="plugins:netbox_interface_profiles:rolesync_list",
         link_text="Synchronizations",
-        permissions=["netbox_interface_profiles.view_profilesync"],
+        permissions=["netbox_interface_profiles.view_rolesync"],
     ),
 )
 
-# Interface templates belong to a profile, config templates to an interface template
+# Interface templates belong to a role, config templates to an interface template
 templates = (
     _menu_item("interfacetemplate", "Interface Templates"),
     _menu_item("profileconfigtemplate", "Config Templates"),
 )
 
 menu = PluginMenu(
-    label="Interface Profiles",
+    label="Interface Roles",
     groups=(
-        ("Profiles", profiles),
+        ("Roles", roles),
         ("Templates", templates),
     ),
     icon_class="mdi mdi-ethernet",

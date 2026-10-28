@@ -1,0 +1,40 @@
+{% extends 'generic/object.html' %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col col-md-6">
+        <div class="card">
+            <h5 class="card-header">Interface Role Assignment</h5>
+            <table class="table table-hover attr-table">
+                <tr>
+                    <th scope="row">Interface</th>
+                    <td>
+                        <a href="{{ object.interface.get_absolute_url }}">{{ object.interface }}</a>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Device</th>
+                    <td>
+                        <a href="{{ object.interface.device.get_absolute_url }}">{{ object.interface.device }}</a>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Interface Role</th>
+                    <td>
+                        <a href="{{ object.interface_role.get_absolute_url }}">{{ object.interface_role }}</a>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Role Group</th>
+                    <td>{{ object.interface_role.group|linkify|placeholder }}</td>
+                </tr>
+            </table>
+        </div>
+        {% include 'inc/panels/custom_fields.html' %}
+    </div>
+    <div class="col col-md-6">
+        {% include 'inc/panels/tags.html' %}
+        {% include 'inc/panels/comments.html' %}
+    </div>
+</div>
+{% endblock content %}

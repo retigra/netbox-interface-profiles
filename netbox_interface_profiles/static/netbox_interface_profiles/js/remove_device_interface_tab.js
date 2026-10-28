@@ -17,15 +17,15 @@
     }
 
     /**
-     * Map /dcim/devices/{id}/interfaces/ to /dcim/devices/{id}/interface-profiles/,
+     * Map /dcim/devices/{id}/interfaces/ to /dcim/devices/{id}/interface-roles/,
      * or return null when path is not the device interfaces route.
      *
      * @param {string} path
      * @returns {string|null}
      */
-    function toInterfaceProfilesPath(path) {
+    function toInterfaceRolesPath(path) {
         const match = DEVICE_INTERFACES_PATH.exec(path);
-        return match ? `${match[1]}interface-profiles/` : null;
+        return match ? `${match[1]}interface-roles/` : null;
     }
 
     /**
@@ -51,7 +51,7 @@
 
     /**
      * Point links to the device interfaces route, and return_url parameters
-     * targeting it, to the interface profiles tab instead. Covers links
+     * targeting it, to the interface roles tab instead. Covers links
      * rendered by NetBox core, such as the interface breadcrumb and the
      * "Add Components" menu. Links marked data-legacy-interfaces are kept.
      */
@@ -67,7 +67,7 @@
 
             let changed = false;
 
-            const path = toInterfaceProfilesPath(url.pathname);
+            const path = toInterfaceRolesPath(url.pathname);
             if (path) {
                 url.pathname = path;
                 changed = true;
@@ -76,7 +76,7 @@
             const returnUrl = url.searchParams.get("return_url");
             if (returnUrl) {
                 const returnTo = new URL(returnUrl, window.location.origin);
-                const returnPath = toInterfaceProfilesPath(returnTo.pathname);
+                const returnPath = toInterfaceRolesPath(returnTo.pathname);
                 if (returnPath) {
                     url.searchParams.set(
                         "return_url",
@@ -119,7 +119,7 @@
     }
 
     document.addEventListener("DOMContentLoaded", () => {
-        // Keep the legacy tab visible while the user is on it, but point out the profiles tab
+        // Keep the legacy tab visible while the user is on it, but point out the roles tab
         if (isDeviceInterfacesHref(window.location.href)) {
             showLegacyInterfacesBanner();
             return;

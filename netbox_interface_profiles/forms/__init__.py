@@ -5,19 +5,19 @@ For more information on NetBox forms, see:
 https://docs.netbox.dev/en/stable/plugins/development/forms/
 """
 
-from .interface_profile import (
-    InterfaceProfileBulkEditForm,
-    InterfaceProfileFilterSetForm,
-    InterfaceProfileForm,
-    InterfaceProfileImportForm,
-    InterfaceProfileSyncForm,
+from .interface_role import (
+    InterfaceRoleBulkEditForm,
+    InterfaceRoleFilterSetForm,
+    InterfaceRoleForm,
+    InterfaceRoleImportForm,
+    InterfaceRoleSyncForm,
 )
-from .interface_profile_assignment import (
-    DeviceBulkAssignProfileForm,
-    InterfaceProfileAssignmentBulkEditForm,
-    InterfaceProfileAssignmentFilterSetForm,
-    InterfaceProfileAssignmentForm,
-    InterfaceProfileAssignmentImportForm,
+from .interface_role_assignment import (
+    DeviceBulkAssignRoleForm,
+    InterfaceRoleAssignmentBulkEditForm,
+    InterfaceRoleAssignmentFilterSetForm,
+    InterfaceRoleAssignmentForm,
+    InterfaceRoleAssignmentImportForm,
 )
 from .interface_template import (
     InterfaceTemplateBulkEditForm,
@@ -31,24 +31,24 @@ from .profile_config_template import (
     ProfileConfigTemplateForm,
     ProfileConfigTemplateImportForm,
 )
-from .profile_group import (
-    ProfileGroupBulkEditForm,
-    ProfileGroupFilterSetForm,
-    ProfileGroupForm,
-    ProfileGroupImportForm,
+from .role_group import (
+    RoleGroupBulkEditForm,
+    RoleGroupFilterSetForm,
+    RoleGroupForm,
+    RoleGroupImportForm,
 )
 
 __all__ = (
-    "DeviceBulkAssignProfileForm",
-    "InterfaceProfileAssignmentBulkEditForm",
-    "InterfaceProfileAssignmentFilterSetForm",
-    "InterfaceProfileAssignmentForm",
-    "InterfaceProfileAssignmentImportForm",
-    "InterfaceProfileBulkEditForm",
-    "InterfaceProfileFilterSetForm",
-    "InterfaceProfileForm",
-    "InterfaceProfileImportForm",
-    "InterfaceProfileSyncForm",
+    "DeviceBulkAssignRoleForm",
+    "InterfaceRoleAssignmentBulkEditForm",
+    "InterfaceRoleAssignmentFilterSetForm",
+    "InterfaceRoleAssignmentForm",
+    "InterfaceRoleAssignmentImportForm",
+    "InterfaceRoleBulkEditForm",
+    "InterfaceRoleFilterSetForm",
+    "InterfaceRoleForm",
+    "InterfaceRoleImportForm",
+    "InterfaceRoleSyncForm",
     "InterfaceTemplateBulkEditForm",
     "InterfaceTemplateFilterSetForm",
     "InterfaceTemplateForm",
@@ -57,8 +57,8 @@ __all__ = (
     "ProfileConfigTemplateFilterSetForm",
     "ProfileConfigTemplateForm",
     "ProfileConfigTemplateImportForm",
-    "ProfileGroupBulkEditForm",
-    "ProfileGroupFilterSetForm",
-    "ProfileGroupForm",
-    "ProfileGroupImportForm",
+    "RoleGroupBulkEditForm",
+    "RoleGroupFilterSetForm",
+    "RoleGroupForm",
+    "RoleGroupImportForm",
 )

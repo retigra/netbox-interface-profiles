@@ -11,7 +11,7 @@ class InterfaceTemplateView(generic.ObjectView):
     """Detail view for InterfaceTemplate."""
 
     queryset = models.InterfaceTemplate.objects.select_related(
-        "interface_profile",
+        "interface_role",
         "scope_type",
     )
 
@@ -20,7 +20,7 @@ class InterfaceTemplateListView(generic.ObjectListView):
     """List view for InterfaceTemplate."""
 
     queryset = models.InterfaceTemplate.objects.select_related(
-        "interface_profile",
+        "interface_role",
         "scope_type",
     )
     table = tables.InterfaceTemplateTable

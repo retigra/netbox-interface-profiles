@@ -9,19 +9,19 @@ from django.core.exceptions import ObjectDoesNotExist
 from netbox.jobs import JobRunner
 from utilities.exceptions import AbortRequest
 
-from .models import ProfileSync
-from .services import run_profile_sync
+from .models import RoleSync
+from .services import run_role_sync
 
 
-class SyncInterfaceProfileJob(JobRunner):
-    """Synchronize all interfaces assigned to an interface profile.
+class SyncInterfaceRoleJob(JobRunner):
+    """Synchronize all interfaces assigned to an interface role.
 
-    The job runs for a ProfileSync created alongside it; the changed interfaces are recorded on
-    that ProfileSync and shown on its detail page.
+    The job runs for a RoleSync created alongside it; the changed interfaces are recorded on
+    that RoleSync and shown on its detail page.
     """
 
     class Meta:
-        name = "Synchronize Interface Profile"
+        name = "Synchronize Interface Role"
 
     def _fail(self, message: str, exc: Exception) -> NoReturn:
         """Fail the job, keeping the reason on the job so the synchronization page can show it."""
@@ -30,18 +30,16 @@ class SyncInterfaceProfileJob(JobRunner):
         raise JobFailed(message) from exc
 
     def run(self, *args, **kwargs) -> None:
-        """Synchronize assignments for the related profile and record the changes."""
+        """Synchronize assignments for the related role and record the changes."""
         try:
-            sync = ProfileSync.objects.select_related("interface_profile").get(job=self.job)
+            sync = RoleSync.objects.select_related("interface_role").get(job=self.job)
         except ObjectDoesNotExist as exc:
-            self._fail("No profile synchronization is linked to this job.", exc)
+            self._fail("No role synchronization is linked to this job.", exc)
 
-        self.logger.info(
-            f"Starting interface profile synchronization for {sync.interface_profile} (dry_run={sync.dry_run})"
-        )
+        self.logger.info(f"Starting interface role synchronization for {sync.interface_role} (dry_run={sync.dry_run})")
 
         try:
-            changes = run_profile_sync(sync)
+            changes = run_role_sync(sync)
         except AbortRequest as exc:
             self._fail(exc.message, exc)
         except Exception as exc:

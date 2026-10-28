@@ -11,16 +11,16 @@ For Django REST Framework serializers, see:
 https://www.django-rest-framework.org/api-guide/serializers/
 """
 
-from .interface_profile import InterfaceProfileSerializer
-from .interface_profile_assignment import InterfaceProfileAssignmentSerializer
+from .interface_role import InterfaceRoleSerializer
+from .interface_role_assignment import InterfaceRoleAssignmentSerializer
 from .interface_template import InterfaceTemplateSerializer
 from .profile_config_template import ProfileConfigTemplateSerializer
-from .profile_group import ProfileGroupSerializer
+from .role_group import RoleGroupSerializer
 
 __all__ = (
-    "InterfaceProfileAssignmentSerializer",
-    "InterfaceProfileSerializer",
+    "InterfaceRoleAssignmentSerializer",
+    "InterfaceRoleSerializer",
     "InterfaceTemplateSerializer",
     "ProfileConfigTemplateSerializer",
-    "ProfileGroupSerializer",
+    "RoleGroupSerializer",
 )

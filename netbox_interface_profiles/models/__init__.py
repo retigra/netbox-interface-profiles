@@ -8,19 +8,19 @@ For NetBox model features (tags, custom fields, change logging, etc.), see:
 https://docs.netbox.dev/en/stable/development/models/#netbox-model-features
 """
 
-from .interface_profile import InterfaceProfile
-from .interface_profile_assignment import InterfaceProfileAssignment
+from .interface_role import InterfaceRole
+from .interface_role_assignment import InterfaceRoleAssignment
 from .interface_template import InterfaceTemplate
 from .profile_config_template import ProfileConfigTemplate
-from .profile_group import ProfileGroup
-from .profile_sync import ProfileSync, ProfileSyncChange
+from .role_group import RoleGroup
+from .role_sync import RoleSync, RoleSyncChange
 
 __all__ = (
-    "InterfaceProfile",
-    "InterfaceProfileAssignment",
+    "InterfaceRole",
+    "InterfaceRoleAssignment",
     "InterfaceTemplate",
     "ProfileConfigTemplate",
-    "ProfileGroup",
-    "ProfileSync",
-    "ProfileSyncChange",
+    "RoleGroup",
+    "RoleSync",
+    "RoleSyncChange",
 )

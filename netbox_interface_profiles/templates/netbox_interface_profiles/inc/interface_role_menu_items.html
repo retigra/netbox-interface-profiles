@@ -1,0 +1,36 @@
+{% load i18n %}
+
+{# Send the CSRF token explicitly, as this menu is not always rendered inside a form #}
+
+{% for role in roles %}
+  <li>
+    <button
+      type="button"
+      class="dropdown-item{% if current_role and current_role.pk == role.pk %} active{% endif %}"
+      hx-post="{% url 'plugins:netbox_interface_profiles:interfaceroleassignment_htmx_set' interface_id=interface.pk role_id=role.pk %}"
+      hx-swap="none"
+      hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+      {% if role.pk not in assignable_role_ids %}disabled title="{% trans "You are not permitted to assign this role" %}"{% endif %}
+    >
+      {% if current_role and current_role.pk == role.pk %}<i class="mdi mdi-check"></i>{% endif %}
+      {{ role.name }}
+    </button>
+  </li>
+{% empty %}
+  <li><span class="dropdown-item-text text-muted">{% trans "No applicable roles" %}</span></li>
+{% endfor %}
+
+{% if can_clear %}
+  <li><hr class="dropdown-divider"></li>
+  <li>
+    <button
+      type="button"
+      class="dropdown-item text-danger"
+      hx-post="{% url 'plugins:netbox_interface_profiles:interfaceroleassignment_htmx_remove' interface_id=interface.pk %}"
+      hx-swap="none"
+      hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+    >
+      <i class="mdi mdi-close-circle-outline"></i> {% trans "Clear Assignment" %}
+    </button>
+  </li>
+{% endif %}

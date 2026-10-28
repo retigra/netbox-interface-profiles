@@ -1,5 +1,5 @@
 {% extends 'generic/object.html' %}
-{% load helpers interface_profiles %}
+{% load helpers interface_roles %}
 
 {% block content %}
   <div class="row">
@@ -12,8 +12,8 @@
             <td>{{ object.name }}</td>
           </tr>
           <tr>
-            <th scope="row">Interface Profile</th>
-            <td>{{ object.interface_profile|linkify }}</td>
+            <th scope="row">Interface Role</th>
+            <td>{{ object.interface_role|linkify }}</td>
           </tr>
           <tr>
             <th scope="row">Scope</th>

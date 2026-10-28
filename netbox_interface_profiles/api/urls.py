@@ -11,19 +11,19 @@ https://www.django-rest-framework.org/api-guide/routers/
 from netbox.api.routers import NetBoxRouter
 
 from .views import (
-    InterfaceProfileAssignmentViewSet,
-    InterfaceProfileViewSet,
+    InterfaceRoleAssignmentViewSet,
+    InterfaceRoleViewSet,
     InterfaceTemplateViewSet,
     ProfileConfigTemplateViewSet,
-    ProfileGroupViewSet,
+    RoleGroupViewSet,
 )
 
 app_name = "netbox_interface_profiles"
 
 router = NetBoxRouter()
-router.register("profile-groups", ProfileGroupViewSet)
-router.register("interface-profiles", InterfaceProfileViewSet)
-router.register("interface-profile-assignments", InterfaceProfileAssignmentViewSet)
+router.register("role-groups", RoleGroupViewSet)
+router.register("interface-roles", InterfaceRoleViewSet)
+router.register("interface-role-assignments", InterfaceRoleAssignmentViewSet)
 router.register("interface-templates", InterfaceTemplateViewSet)
 router.register("profile-config-templates", ProfileConfigTemplateViewSet)
 

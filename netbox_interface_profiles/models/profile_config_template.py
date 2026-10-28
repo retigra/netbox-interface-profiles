@@ -9,7 +9,7 @@ from netbox.models import NetBoxModel
 
 class ProfileConfigTemplate(NetBoxModel):
     """
-    A Jinja2 configuration template scoped to an InterfaceProfile, a Platform,
+    A Jinja2 configuration template scoped to an InterfaceRole, a Platform,
     and an optional DeviceType.
     """
 

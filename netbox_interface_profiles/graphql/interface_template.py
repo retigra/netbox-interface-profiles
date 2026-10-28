@@ -1,7 +1,7 @@
 """
 InterfaceTemplate GraphQL schema for netbox interface profiles.
 
-The type and query names are prefixed with "interface_profile" to avoid
+The type and query names are prefixed with "interface_role" to avoid
 colliding with NetBox's core dcim InterfaceTemplateType and its queries.
 """
 
@@ -16,21 +16,19 @@ from ..models import InterfaceTemplate
 if TYPE_CHECKING:
     from netbox.graphql.types import ContentTypeType
 
-    from .interface_profile import InterfaceProfileType
+    from .interface_role import InterfaceRoleType
     from .profile_config_template import ProfileConfigTemplateType
 
 
 @strawberry_django.type(
     InterfaceTemplate,
     fields="__all__",
-    name="InterfaceProfileTemplateType",
+    name="InterfaceRoleTemplateType",
 )
-class InterfaceProfileTemplateType(NetBoxObjectType):
+class InterfaceRoleTemplateType(NetBoxObjectType):
     """GraphQL type for InterfaceTemplate model."""
 
-    interface_profile: Annotated[
-        "InterfaceProfileType", strawberry.lazy("netbox_interface_profiles.graphql.interface_profile")
-    ]
+    interface_role: Annotated["InterfaceRoleType", strawberry.lazy("netbox_interface_profiles.graphql.interface_role")]
     scope_type: Annotated["ContentTypeType", strawberry.lazy("netbox.graphql.types")] | None
     config_templates: list[
         Annotated[
@@ -44,5 +42,5 @@ class InterfaceProfileTemplateType(NetBoxObjectType):
 class InterfaceTemplateQuery:
     """GraphQL queries for InterfaceTemplate."""
 
-    interface_profile_template: InterfaceProfileTemplateType = strawberry_django.field()
-    interface_profile_template_list: list[InterfaceProfileTemplateType] = strawberry_django.field()
+    interface_role_template: InterfaceRoleTemplateType = strawberry_django.field()
+    interface_role_template_list: list[InterfaceRoleTemplateType] = strawberry_django.field()

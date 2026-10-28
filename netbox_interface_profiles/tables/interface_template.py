@@ -10,7 +10,7 @@ from ..models import InterfaceTemplate
 
 class InterfaceTemplateTable(NetBoxTable):
     name = tables.Column(linkify=True)
-    interface_profile = tables.Column(linkify=True)
+    interface_role = tables.Column(linkify=True)
     scope = tables.Column(verbose_name="Scope", default="—", orderable=False)
     speed = tables.Column(verbose_name="Speed (Mbps)")
     mode = tables.Column()
@@ -37,7 +37,7 @@ class InterfaceTemplateTable(NetBoxTable):
             "pk",
             "id",
             "name",
-            "interface_profile",
+            "interface_role",
             "scope",
             "description",
             "speed",
@@ -61,7 +61,7 @@ class InterfaceTemplateTable(NetBoxTable):
         )
         default_columns = (
             "name",
-            "interface_profile",
+            "interface_role",
             "scope",
             "speed",
             "mode",

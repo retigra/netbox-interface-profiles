@@ -10,7 +10,7 @@ from netbox.api.serializers import NetBoxModelSerializer
 from rest_framework import serializers
 
 from ...models import InterfaceTemplate
-from .interface_profile import InterfaceProfileSerializer
+from .interface_role import InterfaceRoleSerializer
 
 
 class InterfaceTemplateSerializer(NetBoxModelSerializer):
@@ -19,7 +19,7 @@ class InterfaceTemplateSerializer(NetBoxModelSerializer):
     url = serializers.HyperlinkedIdentityField(
         view_name="plugins-api:netbox_interface_profiles-api:interfacetemplate-detail"
     )
-    interface_profile = InterfaceProfileSerializer(nested=True)
+    interface_role = InterfaceRoleSerializer(nested=True)
     scope_type = ContentTypeField(
         queryset=ContentType.objects.filter(app_label="dcim", model__in=("site", "sitegroup")),
         required=False,
@@ -36,7 +36,7 @@ class InterfaceTemplateSerializer(NetBoxModelSerializer):
             "display",
             "name",
             "description",
-            "interface_profile",
+            "interface_role",
             "scope_type",
             "scope_id",
             "scope",

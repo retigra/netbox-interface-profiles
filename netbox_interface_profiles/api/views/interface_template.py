@@ -13,7 +13,7 @@ class InterfaceTemplateViewSet(NetBoxModelViewSet):
     """API viewset for InterfaceTemplate."""
 
     queryset = InterfaceTemplate.objects.select_related(
-        "interface_profile",
+        "interface_role",
         "scope_type",
     )
     serializer_class = InterfaceTemplateSerializer

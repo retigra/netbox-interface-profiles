@@ -5,27 +5,27 @@ This module defines search indexes to make plugin models searchable in NetBox's
 global search. See: https://docs.netbox.dev/en/stable/plugins/development/search/
 """
 
-from .interface_profile import InterfaceProfileIndex
-from .interface_profile_assignment import InterfaceProfileAssignmentIndex
+from .interface_role import InterfaceRoleIndex
+from .interface_role_assignment import InterfaceRoleAssignmentIndex
 from .interface_template import InterfaceTemplateIndex
 from .profile_config_template import ProfileConfigTemplateIndex
-from .profile_group import ProfileGroupIndex
+from .role_group import RoleGroupIndex
 
 # Register all search indexes for this plugin
 # The PluginConfig will automatically load these indexes
 indexes = (
-    InterfaceProfileIndex,
-    InterfaceProfileAssignmentIndex,
+    InterfaceRoleIndex,
+    InterfaceRoleAssignmentIndex,
     InterfaceTemplateIndex,
     ProfileConfigTemplateIndex,
-    ProfileGroupIndex,
+    RoleGroupIndex,
 )
 
 __all__ = (
-    "InterfaceProfileAssignmentIndex",
-    "InterfaceProfileIndex",
+    "InterfaceRoleAssignmentIndex",
+    "InterfaceRoleIndex",
     "InterfaceTemplateIndex",
     "ProfileConfigTemplateIndex",
-    "ProfileGroupIndex",
+    "RoleGroupIndex",
     "indexes",
 )

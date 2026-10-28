@@ -34,16 +34,16 @@ def _render_config_preview(template_code: str, context: dict) -> str:
         return f"Unable to render config preview: {exc}"
 
 
-class InterfaceProfileDetailCard(PluginTemplateExtension):
-    """Render profile assignment and matching templates on interface detail pages."""
+class InterfaceRoleDetailCard(PluginTemplateExtension):
+    """Render role assignment and matching templates on interface detail pages."""
 
     models = ["dcim.interface"]
 
     def right_page(self) -> str:
         interface = self.context["object"]
 
-        assignment = getattr(interface, "profile_assignment", None)
-        profile = getattr(assignment, "interface_profile", None)
+        assignment = getattr(interface, "role_assignment", None)
+        role = getattr(assignment, "interface_role", None)
 
         matching_interface_templates = []
         assigned_interface_template = None
@@ -51,7 +51,7 @@ class InterfaceProfileDetailCard(PluginTemplateExtension):
         assigned_config_template = None
         assigned_config_preview = ""
 
-        if profile:
+        if role:
             site = interface.device.site
             site_group = getattr(site, "group", None)
             site_ct = ContentType.objects.get_for_model(Site)
@@ -63,7 +63,7 @@ class InterfaceProfileDetailCard(PluginTemplateExtension):
             if site_group:
                 scope_q |= Q(scope_type=site_group_ct, scope_id=site_group.pk)
 
-            interface_templates = InterfaceTemplate.objects.filter(interface_profile=profile).filter(scope_q)
+            interface_templates = InterfaceTemplate.objects.filter(interface_role=role).filter(scope_q)
 
             matching_interface_templates = list(
                 interface_templates.annotate(
@@ -80,7 +80,7 @@ class InterfaceProfileDetailCard(PluginTemplateExtension):
 
             if interface.device.platform is not None:
                 config_templates = ProfileConfigTemplate.objects.filter(
-                    interface_template__interface_profile=profile,
+                    interface_template__interface_role=role,
                     platform=interface.device.platform,
                 )
                 config_templates = config_templates.filter(
@@ -105,18 +105,18 @@ class InterfaceProfileDetailCard(PluginTemplateExtension):
                         {
                             "interface": interface,
                             "device": interface.device,
-                            "profile": profile,
+                            "role": role,
                             "assignment": assignment,
                             "config_template": assigned_config_template,
                         },
                     )
 
         return self.render(
-            "netbox_interface_profiles/inc/interface_profile_detail_card.html",
+            "netbox_interface_profiles/inc/interface_role_detail_card.html",
             extra_context={
                 "interface": interface,
                 "assignment": assignment,
-                "profile": profile,
+                "role": role,
                 "matching_interface_templates": matching_interface_templates,
                 "assigned_interface_template": assigned_interface_template,
                 "matching_config_templates": matching_config_templates,
@@ -126,4 +126,4 @@ class InterfaceProfileDetailCard(PluginTemplateExtension):
         )
 
 
-template_extensions = [DeviceHeadScripts, InterfaceProfileDetailCard]
+template_extensions = [DeviceHeadScripts, InterfaceRoleDetailCard]

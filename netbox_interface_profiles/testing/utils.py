@@ -51,7 +51,7 @@ def create_test_user(
 
     Example:
         >>> user = create_test_user(
-        ...     permissions=['netbox_interface_profiles.view_interfaceprofile']
+        ...     permissions=['netbox_interface_profiles.view_interfacerole']
         ... )
     """
     if username is None:

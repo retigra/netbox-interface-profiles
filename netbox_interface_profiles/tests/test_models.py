@@ -9,58 +9,58 @@ from django.core.exceptions import ValidationError
 from ipam.models import VLAN, VLANGroup
 
 from ..forms import InterfaceTemplateForm
-from ..models import InterfaceProfile, InterfaceProfileAssignment, InterfaceTemplate, ProfileGroup
+from ..models import InterfaceRole, InterfaceRoleAssignment, InterfaceTemplate, RoleGroup
 from ..testing import PluginModelTestCase
 from ..testing.utils import create_tags, get_random_string
 
 
-class InterfaceProfileTestCase(PluginModelTestCase):
-    """Test InterfaceProfile model."""
+class InterfaceRoleTestCase(PluginModelTestCase):
+    """Test InterfaceRole model."""
 
     @classmethod
     def setUpTestData(cls):
-        """Create three InterfaceProfile records."""
-        InterfaceProfile.objects.create(
-            name="Profile 1",
-            description="First profile",
+        """Create three InterfaceRole records."""
+        InterfaceRole.objects.create(
+            name="Role 1",
+            description="First role",
         )
-        InterfaceProfile.objects.create(
-            name="Profile 2",
-            description="Second profile",
+        InterfaceRole.objects.create(
+            name="Role 2",
+            description="Second role",
         )
-        InterfaceProfile.objects.create(
-            name="Profile 3",
+        InterfaceRole.objects.create(
+            name="Role 3",
             description="",
         )
 
-    def test_create_interface_profile(self):
-        """Test creating an InterfaceProfile instance."""
-        name = f"Profile {get_random_string(10)}"
-        instance = InterfaceProfile.objects.create(
+    def test_create_interface_role(self):
+        """Test creating an InterfaceRole instance."""
+        name = f"Role {get_random_string(10)}"
+        instance = InterfaceRole.objects.create(
             name=name,
-            description="A test profile",
+            description="A test role",
         )
 
         self.assertEqual(instance.name, name)
-        self.assertEqual(instance.description, "A test profile")
+        self.assertEqual(instance.description, "A test role")
         self.assertIsNotNone(instance.pk)
 
     def test_create_without_description(self):
         """Test that description is optional (blank allowed)."""
-        instance = InterfaceProfile.objects.create(
+        instance = InterfaceRole.objects.create(
             name=f"No Desc {get_random_string(6)}",
         )
 
         self.assertEqual(instance.description, "")
 
     def test_str_representation(self):
-        """Test InterfaceProfile string representation returns name."""
-        instance = InterfaceProfile.objects.first()
+        """Test InterfaceRole string representation returns name."""
+        instance = InterfaceRole.objects.first()
         self.assertEqual(str(instance), instance.name)
 
     def test_absolute_url_contains_pk(self):
         """Test get_absolute_url includes the instance PK."""
-        instance = InterfaceProfile.objects.first()
+        instance = InterfaceRole.objects.first()
         url = instance.get_absolute_url()
 
         self.assertIsNotNone(url)
@@ -68,13 +68,13 @@ class InterfaceProfileTestCase(PluginModelTestCase):
 
     def test_default_ordering(self):
         """Test that instances are ordered by name."""
-        instances = list(InterfaceProfile.objects.all())
+        instances = list(InterfaceRole.objects.all())
         names = [i.name for i in instances]
         self.assertEqual(names, sorted(names))
 
     def test_model_to_dict(self):
         """Test model_to_dict helper includes expected keys."""
-        instance = InterfaceProfile.objects.first()
+        instance = InterfaceRole.objects.first()
         data = self.model_to_dict(instance)
 
         self.assertIn("name", data)
@@ -83,16 +83,16 @@ class InterfaceProfileTestCase(PluginModelTestCase):
 
     def test_instance_equal(self):
         """Test assertInstanceEqual helper with matching data."""
-        instance = InterfaceProfile.objects.first()
+        instance = InterfaceRole.objects.first()
         self.assertInstanceEqual(
             instance,
             {"name": instance.name, "id": instance.pk},
         )
 
-    def test_interface_profile_with_tags(self):
-        """Test InterfaceProfile supports tags (inherited from NetBoxModel)."""
+    def test_interface_role_with_tags(self):
+        """Test InterfaceRole supports tags (inherited from NetBoxModel)."""
         tags = create_tags(["important", "wifi"])
-        instance = InterfaceProfile.objects.first()
+        instance = InterfaceRole.objects.first()
         instance.tags.add(*tags)
         instance.save()
 
@@ -101,25 +101,25 @@ class InterfaceProfileTestCase(PluginModelTestCase):
 
     def test_filter_by_name(self):
         """Test filtering records by name."""
-        results = InterfaceProfile.objects.filter(name__startswith="Profile")
+        results = InterfaceRole.objects.filter(name__startswith="Role")
         self.assertGreaterEqual(results.count(), 3)
 
 
-class InterfaceProfileValidationTestCase(PluginModelTestCase):
-    """Test InterfaceProfile field validation."""
+class InterfaceRoleValidationTestCase(PluginModelTestCase):
+    """Test InterfaceRole field validation."""
 
     def test_name_max_length(self):
         """Test that names exceeding 100 characters are rejected."""
         long_name = "x" * 101
 
         with self.assertRaises(ValidationError):
-            instance = InterfaceProfile(name=long_name)
+            instance = InterfaceRole(name=long_name)
             instance.full_clean()
 
     def test_name_required(self):
         """Test that name is required."""
         with self.assertRaises(ValidationError):
-            instance = InterfaceProfile(name="")
+            instance = InterfaceRole(name="")
             instance.full_clean()
 
 
@@ -128,8 +128,8 @@ class InterfaceTemplateTestCase(PluginModelTestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.profile = InterfaceProfile.objects.create(
-            name="Template Profile",
+        cls.role = InterfaceRole.objects.create(
+            name="Template Role",
             description="",
         )
         cls.site_group = SiteGroup.objects.create(name="SG-1", slug="sg-1")
@@ -137,7 +137,7 @@ class InterfaceTemplateTestCase(PluginModelTestCase):
     def test_create_interface_template(self):
         """Test creating an InterfaceTemplate instance with optional fields."""
         template = InterfaceTemplate.objects.create(
-            interface_profile=self.profile,
+            interface_role=self.role,
             scope=self.site_group,
             name="Access Port Template",
             description="",
@@ -152,19 +152,19 @@ class InterfaceTemplateTestCase(PluginModelTestCase):
         )
 
         self.assertEqual(template.name, "Access Port Template")
-        self.assertEqual(template.interface_profile, self.profile)
+        self.assertEqual(template.interface_role, self.role)
         self.assertEqual(template.scope, self.site_group)
         self.assertEqual(template.untagged_vlan_vid, 10)
         self.assertEqual(template.tagged_vlans_vids, [20, 30])
 
-    def test_profile_device_roles_assignment(self):
-        """Test assigning device role scopes to InterfaceProfile."""
-        role = DeviceRole.objects.create(name="Role-A", slug="role-a")
-        profile = InterfaceProfile.objects.create(name="Scoped Profile", description="")
-        profile.device_roles.add(role)
+    def test_role_device_roles_assignment(self):
+        """Test assigning device role scopes to InterfaceRole."""
+        device_role = DeviceRole.objects.create(name="Role-A", slug="role-a")
+        role = InterfaceRole.objects.create(name="Scoped Role", description="")
+        role.device_roles.add(device_role)
 
-        self.assertEqual(profile.device_roles.count(), 1)
-        self.assertIn(role, profile.device_roles.all())
+        self.assertEqual(role.device_roles.count(), 1)
+        self.assertIn(device_role, role.device_roles.all())
 
     def test_vlan_resolution_prefers_site_vlan(self):
         """Test VID resolution prefers VLAN explicitly assigned to the site."""
@@ -192,7 +192,7 @@ class InterfaceTemplateTestCase(PluginModelTestCase):
         VLAN.objects.create(name="VLAN10-SG", vid=10, group=site_group_vlan_group)
 
         template = InterfaceTemplate.objects.create(
-            interface_profile=self.profile,
+            interface_role=self.role,
             name="Resolve Template",
             untagged_vlan_vid=10,
             tagged_vlans_vids=[10],
@@ -209,7 +209,7 @@ class InterfaceTemplateTestCase(PluginModelTestCase):
     def test_set_null_requires_empty_value(self):
         """Clearing an attribute and setting a value for it at the same time is rejected."""
         template = InterfaceTemplate(
-            interface_profile=self.profile,
+            interface_role=self.role,
             name="Conflicting Template",
             speed=1000,
             set_null_speed=True,
@@ -224,7 +224,7 @@ class InterfaceTemplateTestCase(PluginModelTestCase):
     def test_set_null_mode_rejects_vlans(self):
         """An interface without a mode cannot carry VLANs, so clearing the mode excludes them."""
         template = InterfaceTemplate(
-            interface_profile=self.profile,
+            interface_role=self.role,
             name="Modeless Template",
             set_null_mode=True,
             tagged_vlans_vids=[20],
@@ -239,7 +239,7 @@ class InterfaceTemplateTestCase(PluginModelTestCase):
         """Empty choices from the edit form are stored as None, so they leave the interface unchanged."""
         form = InterfaceTemplateForm(
             data={
-                "interface_profile": self.profile.pk,
+                "interface_role": self.role.pk,
                 "name": "Form Template",
                 "duplex": "",
                 "mode": "",
@@ -257,12 +257,12 @@ class InterfaceTemplateTestCase(PluginModelTestCase):
         self.assertFalse(template.set_null_mode)
 
 
-class InterfaceProfileAssignmentSignalTestCase(PluginModelTestCase):
-    """Test automatic template application on interface profile assignment."""
+class InterfaceRoleAssignmentSignalTestCase(PluginModelTestCase):
+    """Test automatic template application on interface role assignment."""
 
     @classmethod
     def setUpTestData(cls):
-        cls.profile = InterfaceProfile.objects.create(name="Signal Profile", description="")
+        cls.role = InterfaceRole.objects.create(name="Signal Role", description="")
         cls.site_group = SiteGroup.objects.create(name="SG-Signal", slug="sg-signal")
         cls.site = Site.objects.create(name="Site-Signal", slug="site-signal", group=cls.site_group)
 
@@ -308,9 +308,9 @@ class InterfaceProfileAssignmentSignalTestCase(PluginModelTestCase):
         )
 
     def test_assignment_applies_matching_template_attributes(self):
-        """Assigning a profile should apply matching template attributes."""
+        """Assigning a role should apply matching template attributes."""
         InterfaceTemplate.objects.create(
-            interface_profile=self.profile,
+            interface_role=self.role,
             name="Global Access Template",
             enabled=True,
             speed=1000,
@@ -322,9 +322,9 @@ class InterfaceProfileAssignmentSignalTestCase(PluginModelTestCase):
             tagged_vlans_vids=[20],
         )
 
-        InterfaceProfileAssignment.objects.create(
+        InterfaceRoleAssignment.objects.create(
             interface=self.interface,
-            interface_profile=self.profile,
+            interface_role=self.role,
         )
 
         self.interface.refresh_from_db()
@@ -340,15 +340,15 @@ class InterfaceProfileAssignmentSignalTestCase(PluginModelTestCase):
     def test_assignment_uses_global_template_when_no_site_group_template_exists(self):
         """A global template should still apply even when its name differs from the interface."""
         InterfaceTemplate.objects.create(
-            interface_profile=self.profile,
+            interface_role=self.role,
             name="Global Access Template",
             enabled=True,
             speed=1000,
         )
 
-        InterfaceProfileAssignment.objects.create(
+        InterfaceRoleAssignment.objects.create(
             interface=self.interface,
-            interface_profile=self.profile,
+            interface_role=self.role,
         )
 
         self.interface.refresh_from_db()
@@ -368,7 +368,7 @@ class InterfaceProfileAssignmentSignalTestCase(PluginModelTestCase):
         """Empty template attributes, including blank choices, do not change the interface."""
         self._configure_interface()
         InterfaceTemplate.objects.create(
-            interface_profile=self.profile,
+            interface_role=self.role,
             name="Empty Template",
             enabled=True,
             duplex="",
@@ -376,7 +376,7 @@ class InterfaceProfileAssignmentSignalTestCase(PluginModelTestCase):
             poe_mode="",
         )
 
-        InterfaceProfileAssignment.objects.create(interface=self.interface, interface_profile=self.profile)
+        InterfaceRoleAssignment.objects.create(interface=self.interface, interface_role=self.role)
 
         self.interface.refresh_from_db()
         self.assertEqual(self.interface.speed, 1000000)
@@ -390,7 +390,7 @@ class InterfaceProfileAssignmentSignalTestCase(PluginModelTestCase):
         """Template attributes marked set_null are cleared on the interface."""
         self._configure_interface()
         InterfaceTemplate.objects.create(
-            interface_profile=self.profile,
+            interface_role=self.role,
             name="Clearing Template",
             enabled=True,
             mode=InterfaceModeChoices.MODE_ACCESS,
@@ -401,7 +401,7 @@ class InterfaceProfileAssignmentSignalTestCase(PluginModelTestCase):
             set_null_untagged_vlan_vid=True,
         )
 
-        InterfaceProfileAssignment.objects.create(interface=self.interface, interface_profile=self.profile)
+        InterfaceRoleAssignment.objects.create(interface=self.interface, interface_role=self.role)
 
         self.interface.refresh_from_db()
         self.assertIsNone(self.interface.speed)
@@ -415,13 +415,13 @@ class InterfaceProfileAssignmentSignalTestCase(PluginModelTestCase):
         """Clearing the mode also removes the untagged VLAN, as NetBox requires a mode for VLANs."""
         self._configure_interface()
         InterfaceTemplate.objects.create(
-            interface_profile=self.profile,
+            interface_role=self.role,
             name="Clear Mode Template",
             enabled=True,
             set_null_mode=True,
         )
 
-        InterfaceProfileAssignment.objects.create(interface=self.interface, interface_profile=self.profile)
+        InterfaceRoleAssignment.objects.create(interface=self.interface, interface_role=self.role)
 
         self.interface.refresh_from_db()
         self.assertIsNone(self.interface.mode)
@@ -429,14 +429,14 @@ class InterfaceProfileAssignmentSignalTestCase(PluginModelTestCase):
         self.assertEqual(self.interface.mtu, 9000)
 
 
-class ProfileGroupTestCase(PluginModelTestCase):
-    """Test ProfileGroup model behaviour."""
+class RoleGroupTestCase(PluginModelTestCase):
+    """Test RoleGroup model behaviour."""
 
-    def test_deleting_group_ungroups_profiles(self):
-        group = ProfileGroup.objects.create(name="Trunk", slug="trunk")
-        profile = InterfaceProfile.objects.create(name="Uplink Trunk", group=group)
+    def test_deleting_group_ungroups_roles(self):
+        group = RoleGroup.objects.create(name="Trunk", slug="trunk")
+        role = InterfaceRole.objects.create(name="Uplink Trunk", group=group)
 
         group.delete()
 
-        profile.refresh_from_db()
-        self.assertIsNone(profile.group)
+        role.refresh_from_db()
+        self.assertIsNone(role.group)

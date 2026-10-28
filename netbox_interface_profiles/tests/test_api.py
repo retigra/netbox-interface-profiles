@@ -4,30 +4,30 @@ Test cases for netbox interface profiles REST API.
 
 from django.urls import reverse
 
-from ..models import InterfaceProfile, ProfileGroup
+from ..models import InterfaceRole, RoleGroup
 from ..testing import PluginAPITestCase
 from ..testing.utils import disable_warnings, get_random_string
 
 
-class InterfaceProfileAPITestCase(PluginAPITestCase):
-    """Test InterfaceProfile API endpoints."""
+class InterfaceRoleAPITestCase(PluginAPITestCase):
+    """Test InterfaceRole API endpoints."""
 
     @classmethod
     def setUpTestData(cls):
-        """Create three InterfaceProfile instances."""
-        InterfaceProfile.objects.create(name="API Profile 1", description="First")
-        InterfaceProfile.objects.create(name="API Profile 2", description="Second")
-        InterfaceProfile.objects.create(name="API Profile 3", description="")
+        """Create three InterfaceRole instances."""
+        InterfaceRole.objects.create(name="API Role 1", description="First")
+        InterfaceRole.objects.create(name="API Role 2", description="Second")
+        InterfaceRole.objects.create(name="API Role 3", description="")
 
     def setUp(self):
-        """Set up URL names for InterfaceProfile endpoints."""
+        """Set up URL names for InterfaceRole endpoints."""
         super().setUp()
-        self.list_url_name = "plugins-api:netbox_interface_profiles-api:interfaceprofile-list"
-        self.detail_url_name = "plugins-api:netbox_interface_profiles-api:interfaceprofile-detail"
+        self.list_url_name = "plugins-api:netbox_interface_profiles-api:interfacerole-list"
+        self.detail_url_name = "plugins-api:netbox_interface_profiles-api:interfacerole-detail"
 
-    def test_list_interface_profiles(self):
-        """Test GET request returns all InterfaceProfile objects."""
-        self.add_permissions("netbox_interface_profiles.view_interfaceprofile")
+    def test_list_interface_roles(self):
+        """Test GET request returns all InterfaceRole objects."""
+        self.add_permissions("netbox_interface_profiles.view_interfacerole")
 
         url = self._get_list_url()
         response = self.client.get(url)
@@ -36,7 +36,7 @@ class InterfaceProfileAPITestCase(PluginAPITestCase):
         self.assertEqual(response.data["count"], 3)
         self.assertIn("results", response.data)
 
-    def test_list_interface_profiles_without_permission(self):
+    def test_list_interface_roles_without_permission(self):
         """Test GET request without permission returns 403."""
         url = self._get_list_url()
 
@@ -44,11 +44,11 @@ class InterfaceProfileAPITestCase(PluginAPITestCase):
             response = self.client.get(url)
             self.assertHttpStatus(response, 403)
 
-    def test_get_interface_profile(self):
-        """Test GET request for a single InterfaceProfile."""
-        self.add_permissions("netbox_interface_profiles.view_interfaceprofile")
+    def test_get_interface_role(self):
+        """Test GET request for a single InterfaceRole."""
+        self.add_permissions("netbox_interface_profiles.view_interfacerole")
 
-        instance = InterfaceProfile.objects.first()
+        instance = InterfaceRole.objects.first()
         url = self._get_detail_url(instance)
         response = self.client.get(url)
 
@@ -56,9 +56,9 @@ class InterfaceProfileAPITestCase(PluginAPITestCase):
         self.assertEqual(response.data["id"], instance.pk)
         self.assertEqual(response.data["name"], instance.name)
 
-    def test_create_interface_profile(self):
-        """Test POST request creates an InterfaceProfile."""
-        self.add_permissions("netbox_interface_profiles.add_interfaceprofile")
+    def test_create_interface_role(self):
+        """Test POST request creates an InterfaceRole."""
+        self.add_permissions("netbox_interface_profiles.add_interfacerole")
 
         url = self._get_list_url()
         name = f"API Created {get_random_string(10)}"
@@ -70,13 +70,13 @@ class InterfaceProfileAPITestCase(PluginAPITestCase):
         response = self.client.post(url, data, format="json")
         self.assertHttpStatus(response, 201)
 
-        instance = InterfaceProfile.objects.get(name=name)
+        instance = InterfaceRole.objects.get(name=name)
         self.assertEqual(instance.description, "Created via API")
         self.assertEqual(response.data["id"], instance.pk)
 
-    def test_create_interface_profile_with_blank_description(self):
+    def test_create_interface_role_with_blank_description(self):
         """Test POST request accepts a blank optional description."""
-        self.add_permissions("netbox_interface_profiles.add_interfaceprofile")
+        self.add_permissions("netbox_interface_profiles.add_interfacerole")
 
         url = self._get_list_url()
         data = {
@@ -88,7 +88,7 @@ class InterfaceProfileAPITestCase(PluginAPITestCase):
         self.assertHttpStatus(response, 201)
         self.assertEqual(response.data["description"], "")
 
-    def test_create_interface_profile_without_permission(self):
+    def test_create_interface_role_without_permission(self):
         """Test POST request without permission returns 403."""
         url = self._get_list_url()
 
@@ -100,11 +100,11 @@ class InterfaceProfileAPITestCase(PluginAPITestCase):
             )
             self.assertHttpStatus(response, 403)
 
-    def test_update_interface_profile(self):
-        """Test PATCH request updates an InterfaceProfile name."""
-        self.add_permissions("netbox_interface_profiles.change_interfaceprofile")
+    def test_update_interface_role(self):
+        """Test PATCH request updates an InterfaceRole name."""
+        self.add_permissions("netbox_interface_profiles.change_interfacerole")
 
-        instance = InterfaceProfile.objects.first()
+        instance = InterfaceRole.objects.first()
         url = self._get_detail_url(instance)
         new_name = f"Updated {get_random_string(10)}"
 
@@ -114,30 +114,30 @@ class InterfaceProfileAPITestCase(PluginAPITestCase):
         instance.refresh_from_db()
         self.assertEqual(instance.name, new_name)
 
-    def test_update_interface_profile_without_permission(self):
+    def test_update_interface_role_without_permission(self):
         """Test PATCH request without permission returns 403."""
-        instance = InterfaceProfile.objects.first()
+        instance = InterfaceRole.objects.first()
         url = self._get_detail_url(instance)
 
         with disable_warnings("django.request"):
             response = self.client.patch(url, {"name": "Test"}, format="json")
             self.assertHttpStatus(response, 403)
 
-    def test_delete_interface_profile(self):
-        """Test DELETE request removes an InterfaceProfile."""
-        self.add_permissions("netbox_interface_profiles.delete_interfaceprofile")
+    def test_delete_interface_role(self):
+        """Test DELETE request removes an InterfaceRole."""
+        self.add_permissions("netbox_interface_profiles.delete_interfacerole")
 
-        instance = InterfaceProfile.objects.last()
+        instance = InterfaceRole.objects.last()
         pk = instance.pk
         url = self._get_detail_url(instance)
 
         response = self.client.delete(url)
         self.assertHttpStatus(response, 204)
-        self.assertFalse(InterfaceProfile.objects.filter(pk=pk).exists())
+        self.assertFalse(InterfaceRole.objects.filter(pk=pk).exists())
 
-    def test_delete_interface_profile_without_permission(self):
+    def test_delete_interface_role_without_permission(self):
         """Test DELETE request without permission returns 403."""
-        instance = InterfaceProfile.objects.first()
+        instance = InterfaceRole.objects.first()
         url = self._get_detail_url(instance)
 
         with disable_warnings("django.request"):
@@ -146,21 +146,21 @@ class InterfaceProfileAPITestCase(PluginAPITestCase):
 
     def test_options_endpoint(self):
         """Test OPTIONS request on the list endpoint succeeds."""
-        self.add_permissions("netbox_interface_profiles.view_interfaceprofile")
+        self.add_permissions("netbox_interface_profiles.view_interfacerole")
 
         url = self._get_list_url()
         response = self.client.options(url)
         self.assertHttpStatus(response, 200)
 
 
-class InterfaceProfileAPIValidationTestCase(PluginAPITestCase):
-    """Test InterfaceProfile API input validation."""
+class InterfaceRoleAPIValidationTestCase(PluginAPITestCase):
+    """Test InterfaceRole API input validation."""
 
     def setUp(self):
         """Grant add permission and set URL name."""
         super().setUp()
-        self.add_permissions("netbox_interface_profiles.add_interfaceprofile")
-        self.list_url_name = "plugins-api:netbox_interface_profiles-api:interfaceprofile-list"
+        self.add_permissions("netbox_interface_profiles.add_interfacerole")
+        self.list_url_name = "plugins-api:netbox_interface_profiles-api:interfacerole-list"
 
     def test_create_with_missing_name(self):
         """Test that missing name is rejected with HTTP 400."""
@@ -172,20 +172,20 @@ class InterfaceProfileAPIValidationTestCase(PluginAPITestCase):
         self.assertIn("name", response.data)
 
 
-class ProfileGroupAPITestCase(PluginAPITestCase):
-    """Test ProfileGroup API endpoints and the group field on InterfaceProfile."""
+class RoleGroupAPITestCase(PluginAPITestCase):
+    """Test RoleGroup API endpoints and the group field on InterfaceRole."""
 
     @classmethod
     def setUpTestData(cls):
-        cls.group = ProfileGroup.objects.create(name="Access", slug="access")
+        cls.group = RoleGroup.objects.create(name="Access", slug="access")
 
     def setUp(self):
         super().setUp()
-        self.list_url_name = "plugins-api:netbox_interface_profiles-api:profilegroup-list"
-        self.detail_url_name = "plugins-api:netbox_interface_profiles-api:profilegroup-detail"
+        self.list_url_name = "plugins-api:netbox_interface_profiles-api:rolegroup-list"
+        self.detail_url_name = "plugins-api:netbox_interface_profiles-api:rolegroup-detail"
 
-    def test_list_profile_groups(self):
-        self.add_permissions("netbox_interface_profiles.view_profilegroup")
+    def test_list_role_groups(self):
+        self.add_permissions("netbox_interface_profiles.view_rolegroup")
 
         response = self.client.get(self._get_list_url())
 
@@ -193,20 +193,20 @@ class ProfileGroupAPITestCase(PluginAPITestCase):
         self.assertEqual(response.data["count"], 1)
         self.assertEqual(response.data["results"][0]["slug"], "access")
 
-    def test_create_profile_group(self):
-        self.add_permissions("netbox_interface_profiles.add_profilegroup")
+    def test_create_role_group(self):
+        self.add_permissions("netbox_interface_profiles.add_rolegroup")
 
         response = self.client.post(self._get_list_url(), {"name": "Trunk", "slug": "trunk"}, format="json")
 
         self.assertHttpStatus(response, 201)
-        self.assertTrue(ProfileGroup.objects.filter(slug="trunk").exists())
+        self.assertTrue(RoleGroup.objects.filter(slug="trunk").exists())
 
-    def test_assign_group_to_interface_profile(self):
-        self.add_permissions("netbox_interface_profiles.add_interfaceprofile")
+    def test_assign_group_to_interface_role(self):
+        self.add_permissions("netbox_interface_profiles.add_interfacerole")
 
-        url = reverse("plugins-api:netbox_interface_profiles-api:interfaceprofile-list")
+        url = reverse("plugins-api:netbox_interface_profiles-api:interfacerole-list")
         response = self.client.post(url, {"name": "Access VLAN 10", "group": self.group.pk}, format="json")
 
         self.assertHttpStatus(response, 201)
         self.assertEqual(response.data["group"]["id"], self.group.pk)
-        self.assertEqual(InterfaceProfile.objects.get(name="Access VLAN 10").group, self.group)
+        self.assertEqual(InterfaceRole.objects.get(name="Access VLAN 10").group, self.group)

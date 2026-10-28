@@ -19,7 +19,7 @@ from utilities.forms.rendering import FieldSet
 from utilities.forms.widgets import BulkEditNullBooleanSelect, HTMXSelect
 from utilities.templatetags.builtins.filters import bettertitle
 
-from ..models import InterfaceProfile, InterfaceTemplate
+from ..models import InterfaceRole, InterfaceTemplate
 
 INTERFACE_TEMPLATE_SCOPE_TYPES = ("site", "sitegroup")
 
@@ -27,9 +27,9 @@ INTERFACE_TEMPLATE_SCOPE_TYPES = ("site", "sitegroup")
 class InterfaceTemplateForm(NetBoxModelForm):
     """Create / Edit form for InterfaceTemplate."""
 
-    interface_profile = DynamicModelChoiceField(
-        queryset=InterfaceProfile.objects.all(),
-        label=_("Interface Profile"),
+    interface_role = DynamicModelChoiceField(
+        queryset=InterfaceRole.objects.all(),
+        label=_("Interface Role"),
     )
     scope_type = ContentTypeChoiceField(
         queryset=ContentType.objects.filter(app_label="dcim", model__in=INTERFACE_TEMPLATE_SCOPE_TYPES),
@@ -109,7 +109,7 @@ class InterfaceTemplateForm(NetBoxModelForm):
     )
 
     fieldsets = (
-        FieldSet("interface_profile", "scope_type", "scope", name=_("Scope")),
+        FieldSet("interface_role", "scope_type", "scope", name=_("Scope")),
         FieldSet("name", "description", "tags", name=_("Basic Information")),
         FieldSet(
             "speed",
@@ -136,7 +136,7 @@ class InterfaceTemplateForm(NetBoxModelForm):
         fields = (
             "name",
             "description",
-            "interface_profile",
+            "interface_role",
             "scope_type",
             "speed",
             "duplex",
@@ -221,7 +221,7 @@ class InterfaceTemplateImportForm(NetBoxModelImportForm):
         fields = (
             "name",
             "description",
-            "interface_profile",
+            "interface_role",
             "speed",
             "duplex",
             "mtu",
@@ -248,10 +248,10 @@ class InterfaceTemplateBulkEditForm(NetBoxModelBulkEditForm):
         queryset=InterfaceTemplate.objects.all(),
         widget=forms.MultipleHiddenInput(),
     )
-    interface_profile = DynamicModelChoiceField(
-        queryset=InterfaceProfile.objects.all(),
+    interface_role = DynamicModelChoiceField(
+        queryset=InterfaceRole.objects.all(),
         required=False,
-        label=_("Interface Profile"),
+        label=_("Interface Role"),
     )
     scope_type = ContentTypeChoiceField(
         queryset=ContentType.objects.filter(app_label="dcim", model__in=INTERFACE_TEMPLATE_SCOPE_TYPES),
@@ -328,10 +328,10 @@ class InterfaceTemplateFilterSetForm(NetBoxModelFilterSetForm):
 
     name = forms.CharField(required=False, label=_("Name"))
     description = forms.CharField(required=False, label=_("Description"))
-    interface_profile_id = DynamicModelMultipleChoiceField(
-        queryset=InterfaceProfile.objects.all(),
+    interface_role_id = DynamicModelMultipleChoiceField(
+        queryset=InterfaceRole.objects.all(),
         required=False,
-        label=_("Interface Profile"),
+        label=_("Interface Role"),
     )
     scope_site_id = DynamicModelMultipleChoiceField(
         queryset=Site.objects.all(),

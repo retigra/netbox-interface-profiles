@@ -32,8 +32,8 @@ class InterfaceTemplate(NetBoxModel):
     """
 
     # Configuration scope
-    interface_profile = models.ForeignKey(
-        to="netbox_interface_profiles.InterfaceProfile",
+    interface_role = models.ForeignKey(
+        to="netbox_interface_profiles.InterfaceRole",
         on_delete=models.CASCADE,
         related_name="interface_templates",
     )
@@ -137,18 +137,18 @@ class InterfaceTemplate(NetBoxModel):
     )
 
     class Meta:
-        ordering = ("interface_profile", "name")
+        ordering = ("interface_role", "name")
         verbose_name = "Interface Template"
         verbose_name_plural = "Interface Templates"
         constraints = [
             models.UniqueConstraint(
-                fields=("interface_profile", "name"),
-                name="unique_template_name_per_profile",
+                fields=("interface_role", "name"),
+                name="unique_template_name_per_role",
             ),
         ]
 
     def __str__(self) -> str:
-        return f"{self.interface_profile.name} → {self.name}"
+        return f"{self.interface_role.name} → {self.name}"
 
     def get_absolute_url(self) -> str:
         return reverse("plugins:netbox_interface_profiles:interfacetemplate", args=[self.pk])

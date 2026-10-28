@@ -9,10 +9,10 @@ from django.utils.html import format_html
 class ProfileNameWidget(forms.TextInput):
     """
     TextInput with a "Generate" button that computes a slugified name from the
-    three scope fields: platform, (optional) device_type, and interface_profile.
+    three scope fields: platform, (optional) device_type, and interface_role.
 
     The generated slug follows the pattern:
-        {platform}-{device_type}-{interface_profile}
+        {platform}-{device_type}-{interface_role}
     omitting device_type when it is not selected.
 
     Requires profile_name_widget.js, which is loaded globally via
@@ -27,7 +27,7 @@ class ProfileNameWidget(forms.TextInput):
             "{}"
             '<button type="button" class="btn btn-secondary" '
             'id="btn-generate-profile-name" '
-            'title="Generate name from Platform, Device Type and Interface Profile">'
+            'title="Generate name from Platform, Device Type and Interface Role">'
             '<i class="mdi mdi-refresh"></i>'
             "</button>"
             "</div>",

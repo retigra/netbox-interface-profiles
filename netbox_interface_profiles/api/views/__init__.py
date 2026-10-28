@@ -8,16 +8,16 @@ For Django REST Framework viewsets, see:
 https://www.django-rest-framework.org/api-guide/viewsets/
 """
 
-from .interface_profile import InterfaceProfileViewSet
-from .interface_profile_assignment import InterfaceProfileAssignmentViewSet
+from .interface_role import InterfaceRoleViewSet
+from .interface_role_assignment import InterfaceRoleAssignmentViewSet
 from .interface_template import InterfaceTemplateViewSet
 from .profile_config_template import ProfileConfigTemplateViewSet
-from .profile_group import ProfileGroupViewSet
+from .role_group import RoleGroupViewSet
 
 __all__ = (
-    "InterfaceProfileAssignmentViewSet",
-    "InterfaceProfileViewSet",
+    "InterfaceRoleAssignmentViewSet",
+    "InterfaceRoleViewSet",
     "InterfaceTemplateViewSet",
     "ProfileConfigTemplateViewSet",
-    "ProfileGroupViewSet",
+    "RoleGroupViewSet",
 )

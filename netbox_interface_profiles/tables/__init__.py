@@ -8,19 +8,19 @@ For django-tables2 documentation, see:
 https://django-tables2.readthedocs.io/
 """
 
-from .interface_profile import InterfaceProfileTable
-from .interface_profile_assignment import DeviceInterfaceTable, InterfaceProfileAssignmentTable
+from .interface_role import InterfaceRoleTable
+from .interface_role_assignment import DeviceInterfaceTable, InterfaceRoleAssignmentTable
 from .interface_template import InterfaceTemplateTable
 from .profile_config_template import ProfileConfigTemplateTable
-from .profile_group import ProfileGroupTable
-from .profile_sync import ProfileSyncTable
+from .role_group import RoleGroupTable
+from .role_sync import RoleSyncTable
 
 __all__ = (
     "DeviceInterfaceTable",
-    "InterfaceProfileAssignmentTable",
-    "InterfaceProfileTable",
+    "InterfaceRoleAssignmentTable",
+    "InterfaceRoleTable",
     "InterfaceTemplateTable",
     "ProfileConfigTemplateTable",
-    "ProfileGroupTable",
-    "ProfileSyncTable",
+    "RoleGroupTable",
+    "RoleSyncTable",
 )
