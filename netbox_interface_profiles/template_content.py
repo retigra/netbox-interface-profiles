@@ -7,7 +7,6 @@ from __future__ import annotations
 from dcim.models import Site, SiteGroup
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Case, IntegerField, Q, Value, When
-from jinja2 import Environment
 from netbox.plugins import PluginTemplateExtension
 
 from .models import InterfaceTemplate, ProfileConfigTemplate
@@ -24,14 +23,12 @@ class DeviceHeadScripts(PluginTemplateExtension):
         return self.render("netbox_interface_profiles/remove_device_interface_tab.html")
 
 
-def _render_config_preview(template_code: str, context: dict) -> str:
-    """Render a config preview string from Jinja2 template code."""
+def _render_config_preview(config_template: ProfileConfigTemplate, context: dict) -> str:
+    """Render a config preview string from a config template."""
     try:
-        environment = Environment(autoescape=False)
-        template = environment.from_string(template_code)
-        return template.render(context)
+        return config_template.render(context)
     except Exception as exc:  # pragma: no cover - defensive for user-authored templates
-        return f"Unable to render config preview: {exc}"
+        return f"Unable to render config preview: {type(exc).__name__}: {exc}"
 
 
 class InterfaceRoleDetailCard(PluginTemplateExtension):
@@ -78,38 +75,19 @@ class InterfaceRoleDetailCard(PluginTemplateExtension):
             if matching_interface_templates:
                 assigned_interface_template = matching_interface_templates[0]
 
-            if interface.device.platform is not None:
-                config_templates = ProfileConfigTemplate.objects.filter(
-                    interface_template__interface_role=role,
-                    platform=interface.device.platform,
+            matching_config_templates = list(ProfileConfigTemplate.objects.for_interface(interface, role))
+            if matching_config_templates:
+                assigned_config_template = matching_config_templates[0]
+                assigned_config_preview = _render_config_preview(
+                    assigned_config_template,
+                    {
+                        "interface": interface,
+                        "device": interface.device,
+                        "role": role,
+                        "assignment": assignment,
+                        "config_template": assigned_config_template,
+                    },
                 )
-                config_templates = config_templates.filter(
-                    Q(device_type=interface.device.device_type) | Q(device_type__isnull=True)
-                )
-
-                matching_config_templates = list(
-                    config_templates.order_by(
-                        Case(
-                            When(device_type=interface.device.device_type, then=Value(0)),
-                            default=Value(1),
-                            output_field=IntegerField(),
-                        ),
-                        "name",
-                        "pk",
-                    )
-                )
-                if matching_config_templates:
-                    assigned_config_template = matching_config_templates[0]
-                    assigned_config_preview = _render_config_preview(
-                        assigned_config_template.template_code,
-                        {
-                            "interface": interface,
-                            "device": interface.device,
-                            "role": role,
-                            "assignment": assignment,
-                            "config_template": assigned_config_template,
-                        },
-                    )
 
         return self.render(
             "netbox_interface_profiles/inc/interface_role_detail_card.html",

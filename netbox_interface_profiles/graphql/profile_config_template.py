@@ -6,28 +6,30 @@ from typing import TYPE_CHECKING, Annotated
 
 import strawberry
 import strawberry_django
+from core.graphql.mixins import SyncedDataMixin
 from netbox.graphql.types import NetBoxObjectType
 
 from ..models import ProfileConfigTemplate
 
 if TYPE_CHECKING:
     from dcim.graphql.types import DeviceTypeType, PlatformType
+    from extras.graphql.types import TagType
 
-    from .interface_template import InterfaceRoleTemplateType
+    from .interface_role import InterfaceRoleType
 
 
 @strawberry_django.type(
     ProfileConfigTemplate,
     fields="__all__",
 )
-class ProfileConfigTemplateType(NetBoxObjectType):
+class ProfileConfigTemplateType(SyncedDataMixin, NetBoxObjectType):
     """GraphQL type for ProfileConfigTemplate model."""
 
-    interface_template: Annotated[
-        "InterfaceRoleTemplateType", strawberry.lazy("netbox_interface_profiles.graphql.interface_template")
-    ]
+    interface_role: Annotated["InterfaceRoleType", strawberry.lazy("netbox_interface_profiles.graphql.interface_role")]
     platform: Annotated["PlatformType", strawberry.lazy("dcim.graphql.types")]
     device_type: Annotated["DeviceTypeType", strawberry.lazy("dcim.graphql.types")] | None
+    device_tags: list[Annotated["TagType", strawberry.lazy("extras.graphql.types")]]
+    interface_tags: list[Annotated["TagType", strawberry.lazy("extras.graphql.types")]]
 
 
 @strawberry.type(name="Query")

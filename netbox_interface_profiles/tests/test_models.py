@@ -2,14 +2,18 @@
 Test cases for netbox interface profiles models.
 """
 
+import hashlib
+
+from core.models import AutoSyncRecord, DataFile, DataSource, ObjectType
 from dcim.choices import InterfaceModeChoices, InterfaceTypeChoices
-from dcim.models import Device, DeviceRole, DeviceType, Interface, Manufacturer, Site, SiteGroup
+from dcim.models import Device, DeviceRole, DeviceType, Interface, Manufacturer, Platform, Site, SiteGroup
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 from ipam.models import VLAN, VLANGroup
 
-from ..forms import InterfaceTemplateForm
-from ..models import InterfaceRole, InterfaceRoleAssignment, InterfaceTemplate, RoleGroup
+from ..forms import InterfaceTemplateForm, ProfileConfigTemplateForm
+from ..models import InterfaceRole, InterfaceRoleAssignment, InterfaceTemplate, ProfileConfigTemplate, RoleGroup
 from ..testing import PluginModelTestCase
 from ..testing.utils import create_tags, get_random_string
 
@@ -440,3 +444,138 @@ class RoleGroupTestCase(PluginModelTestCase):
 
         role.refresh_from_db()
         self.assertIsNone(role.group)
+
+
+class ProfileConfigTemplateTestCase(PluginModelTestCase):
+    """Test ProfileConfigTemplate resolution, rendering and data synchronization."""
+
+    @classmethod
+    def setUpTestData(cls):
+        site = Site.objects.create(name="Config Site", slug="config-site")
+        manufacturer = Manufacturer.objects.create(name="Config Manufacturer", slug="config-manufacturer")
+        cls.device_type = DeviceType.objects.create(
+            manufacturer=manufacturer, model="Config Model", slug="config-model"
+        )
+        cls.other_device_type = DeviceType.objects.create(
+            manufacturer=manufacturer, model="Other Model", slug="other-model"
+        )
+        cls.platform = Platform.objects.create(name="Config Platform", slug="config-platform")
+        cls.other_platform = Platform.objects.create(name="Other Platform", slug="other-platform")
+        device_role = DeviceRole.objects.create(name="Config Device Role", slug="config-device-role")
+        cls.device = Device.objects.create(
+            name="Config Device",
+            site=site,
+            device_type=cls.device_type,
+            role=device_role,
+            platform=cls.platform,
+        )
+        cls.interface = Interface.objects.create(
+            device=cls.device, name="eth0", type=InterfaceTypeChoices.TYPE_1GE_FIXED
+        )
+        cls.role = InterfaceRole.objects.create(name="Config Role")
+        InterfaceRoleAssignment.objects.create(interface=cls.interface, interface_role=cls.role)
+        cls.tags = create_tags(["Device Tag", "Interface Tag", "Other Tag"])
+
+    def create_template(self, name: str, **kwargs) -> ProfileConfigTemplate:
+        kwargs.setdefault("interface_role", self.role)
+        kwargs.setdefault("platform", self.platform)
+        kwargs.setdefault("template_code", f"! {name}")
+        device_tags = kwargs.pop("device_tags", ())
+        interface_tags = kwargs.pop("interface_tags", ())
+        template = ProfileConfigTemplate.objects.create(name=name, **kwargs)
+        template.device_tags.set(device_tags)
+        template.interface_tags.set(interface_tags)
+        return template
+
+    def matching_names(self) -> list[str]:
+        return [template.name for template in ProfileConfigTemplate.objects.for_interface(self.interface)]
+
+    def test_for_interface_matches_role_platform_and_device_type(self):
+        self.create_template("Platform Default")
+        self.create_template("Device Type", device_type=self.device_type)
+        self.create_template("Other Device Type", device_type=self.other_device_type)
+        self.create_template("Other Platform", platform=self.other_platform)
+        self.create_template("Other Role", interface_role=InterfaceRole.objects.create(name="Other Role"))
+
+        self.assertCountEqual(self.matching_names(), ["Platform Default", "Device Type"])
+
+    def test_for_interface_requires_all_tags(self):
+        device_tag, interface_tag, other_tag = self.tags
+        self.device.tags.add(device_tag)
+        self.interface.tags.add(interface_tag)
+        self.create_template("Device Tagged", device_tags=[device_tag])
+        self.create_template("Interface Tagged", interface_tags=[interface_tag])
+        self.create_template("Partially Tagged", interface_tags=[interface_tag, other_tag])
+        self.create_template("Device Tag On Interface", interface_tags=[device_tag])
+
+        self.assertCountEqual(self.matching_names(), ["Device Tagged", "Interface Tagged"])
+
+    def test_for_interface_orders_by_weight(self):
+        self.create_template("Low", weight=100)
+        self.create_template("High", weight=2000)
+        self.create_template("Default")
+
+        self.assertEqual(self.matching_names(), ["High", "Default", "Low"])
+
+    def test_for_interface_without_role_or_platform(self):
+        self.create_template("Platform Default")
+        unassigned = Interface.objects.create(device=self.device, name="eth1", type=InterfaceTypeChoices.TYPE_1GE_FIXED)
+
+        self.assertFalse(ProfileConfigTemplate.objects.for_interface(unassigned).exists())
+        self.assertEqual(
+            list(ProfileConfigTemplate.objects.for_interface(unassigned, self.role).values_list("name", flat=True)),
+            ["Platform Default"],
+        )
+
+        self.device.platform = None
+        self.device.save()
+        self.interface.refresh_from_db()
+        self.assertFalse(ProfileConfigTemplate.objects.for_interface(self.interface).exists())
+
+    def test_render_does_not_escape(self):
+        template = self.create_template("Render", template_code="interface {{ interface.name }}\n description {{ x }}")
+
+        self.assertEqual(
+            template.render({"interface": self.interface, "x": "<a & b>"}), "interface eth0\n description <a & b>"
+        )
+
+    def test_environment_params_are_validated(self):
+        template = self.create_template("Params", environment_params={"loader": "x"})
+
+        with self.assertRaises(ValidationError):
+            template.full_clean()
+
+    def test_sync_from_data_file(self):
+        data_source = DataSource.objects.create(name="Templates", type="local", source_url="file:///tmp/templates")
+        content = b"interface {{ interface.name }}"
+        data_file = DataFile.objects.create(
+            source=data_source,
+            path="access.j2",
+            last_updated=timezone.now(),
+            size=len(content),
+            hash=hashlib.sha256(content).hexdigest(),
+            data=content,
+        )
+        form = ProfileConfigTemplateForm(
+            data={
+                "name": "Synced",
+                "interface_role": self.role.pk,
+                "platform": self.platform.pk,
+                "weight": 1000,
+                "data_source": data_source.pk,
+                "data_file": data_file.pk,
+                "auto_sync_enabled": True,
+            }
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        template = form.save()
+
+        self.assertEqual(template.template_code, "interface {{ interface.name }}")
+        self.assertEqual(template.data_source, data_source)
+        self.assertEqual(template.data_path, "access.j2")
+        self.assertIsNotNone(template.data_synced)
+        self.assertTrue(
+            AutoSyncRecord.objects.filter(
+                object_type=ObjectType.objects.get_for_model(ProfileConfigTemplate), object_id=template.pk
+            ).exists()
+        )

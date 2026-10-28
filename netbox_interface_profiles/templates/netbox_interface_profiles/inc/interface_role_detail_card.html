@@ -65,11 +65,7 @@
             {% for template in matching_config_templates %}
               <div class="mb-1">
                 <a href="{{ template.get_absolute_url }}">{{ template.name }}</a>
-                {% if template.device_type %}
-                  <span class="text-muted">(device type: {{ template.device_type }})</span>
-                {% else %}
-                  <span class="text-muted">(platform default)</span>
-                {% endif %}
+                <span class="text-muted">(weight {{ template.weight }})</span>
               </div>
             {% endfor %}
           {% else %}

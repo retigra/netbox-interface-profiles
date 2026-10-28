@@ -2,11 +2,12 @@
 Test cases for netbox interface profiles REST API.
 """
 
+from dcim.models import Platform
 from django.urls import reverse
 
-from ..models import InterfaceRole, RoleGroup
+from ..models import InterfaceRole, ProfileConfigTemplate, RoleGroup
 from ..testing import PluginAPITestCase
-from ..testing.utils import disable_warnings, get_random_string
+from ..testing.utils import create_tags, disable_warnings, get_random_string
 
 
 class InterfaceRoleAPITestCase(PluginAPITestCase):
@@ -210,3 +211,74 @@ class RoleGroupAPITestCase(PluginAPITestCase):
         self.assertHttpStatus(response, 201)
         self.assertEqual(response.data["group"]["id"], self.group.pk)
         self.assertEqual(InterfaceRole.objects.get(name="Access VLAN 10").group, self.group)
+
+
+class ProfileConfigTemplateAPITestCase(PluginAPITestCase):
+    """Test ProfileConfigTemplate API endpoints."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.role = InterfaceRole.objects.create(name="API Config Role")
+        cls.platform = Platform.objects.create(name="API Platform", slug="api-platform")
+        cls.tags = create_tags(["API Device Tag", "API Interface Tag"])
+
+    def setUp(self):
+        super().setUp()
+        self.list_url_name = "plugins-api:netbox_interface_profiles-api:profileconfigtemplate-list"
+        self.detail_url_name = "plugins-api:netbox_interface_profiles-api:profileconfigtemplate-detail"
+
+    def test_create_profile_config_template(self):
+        """Test POST request creates a template with its scope."""
+        self.add_permissions("netbox_interface_profiles.add_profileconfigtemplate")
+        device_tag, interface_tag = self.tags
+
+        data = {
+            "name": "API Template",
+            "interface_role": self.role.pk,
+            "platform": self.platform.pk,
+            "device_tags": [device_tag.pk],
+            "interface_tags": [interface_tag.pk],
+            "weight": 500,
+            "template_code": "interface {{ interface.name }}",
+            "environment_params": {"trim_blocks": True},
+        }
+        response = self.client.post(self._get_list_url(), data, format="json")
+        self.assertHttpStatus(response, 201)
+
+        instance = ProfileConfigTemplate.objects.get(name="API Template")
+        self.assertEqual(instance.interface_role, self.role)
+        self.assertEqual(instance.weight, 500)
+        self.assertEqual(list(instance.device_tags.all()), [device_tag])
+        self.assertEqual(list(instance.interface_tags.all()), [interface_tag])
+        self.assertEqual(response.data["interface_role"]["id"], self.role.pk)
+        self.assertEqual(response.data["device_tags"][0]["slug"], device_tag.slug)
+
+    def test_create_with_invalid_environment_params(self):
+        """Test environment parameters are validated as for NetBox config templates."""
+        self.add_permissions("netbox_interface_profiles.add_profileconfigtemplate")
+
+        data = {
+            "name": "API Invalid Template",
+            "interface_role": self.role.pk,
+            "platform": self.platform.pk,
+            "template_code": "!",
+            "environment_params": {"loader": "x"},
+        }
+        with disable_warnings("django.request"):
+            response = self.client.post(self._get_list_url(), data, format="json")
+        self.assertHttpStatus(response, 400)
+
+    def test_sync_requires_sync_permission(self):
+        """Test the /sync/ action is guarded by the sync permission."""
+        instance = ProfileConfigTemplate.objects.create(
+            name="API Sync Template", interface_role=self.role, platform=self.platform, template_code="!"
+        )
+        url = reverse(
+            "plugins-api:netbox_interface_profiles-api:profileconfigtemplate-sync", kwargs={"pk": instance.pk}
+        )
+
+        with disable_warnings("django.request"):
+            self.assertHttpStatus(self.client.post(url, format="json"), 403)
+
+        self.add_permissions("netbox_interface_profiles.sync_profileconfigtemplate")
+        self.assertHttpStatus(self.client.post(url, format="json"), 200)

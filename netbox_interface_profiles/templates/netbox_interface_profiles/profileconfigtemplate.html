@@ -1,4 +1,7 @@
 {% extends 'generic/object.html' %}
+{% load buttons %}
+{% load helpers %}
+{% load perms %}
 
 {% block content %}
 <div class="row mb-3">
@@ -12,35 +15,98 @@
                 </tr>
                 <tr>
                     <th scope="row">Description</th>
-                    <td>{{ object.description|default:'&mdash;' }}</td>
+                    <td>{{ object.description|placeholder }}</td>
                 </tr>
                 <tr>
-                    <th scope="row">Interface Template</th>
-                    <td>
-                        <a href="{{ object.interface_template.get_absolute_url }}">{{ object.interface_template }}</a>
-                    </td>
+                    <th scope="row">Interface Role</th>
+                    <td>{{ object.interface_role|linkify }}</td>
                 </tr>
                 <tr>
                     <th scope="row">Platform</th>
-                    <td>
-                        <a href="{{ object.platform.get_absolute_url }}">{{ object.platform }}</a>
-                    </td>
+                    <td>{{ object.platform|linkify }}</td>
                 </tr>
                 <tr>
                     <th scope="row">Device Type</th>
+                    <td>{{ object.device_type|linkify|placeholder }}</td>
+                </tr>
+                <tr>
+                    <th scope="row">Device Tags</th>
                     <td>
-                        {% if object.device_type %}
-                            <a href="{{ object.device_type.get_absolute_url }}">{{ object.device_type }}</a>
-                        {% else %}
+                        {% for tag in object.device_tags.all %}
+                            {% tag tag %}
+                        {% empty %}
                             <span class="text-muted">&mdash;</span>
-                        {% endif %}
+                        {% endfor %}
                     </td>
+                </tr>
+                <tr>
+                    <th scope="row">Interface Tags</th>
+                    <td>
+                        {% for tag in object.interface_tags.all %}
+                            {% tag tag %}
+                        {% empty %}
+                            <span class="text-muted">&mdash;</span>
+                        {% endfor %}
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Weight</th>
+                    <td>{{ object.weight }}</td>
+                </tr>
+                <tr>
+                    <th scope="row">Debug</th>
+                    <td>{% checkmark object.debug %}</td>
                 </tr>
             </table>
         </div>
         {% include 'inc/panels/custom_fields.html' %}
     </div>
     <div class="col col-md-6">
+        <div class="card">
+            <h5 class="card-header">
+                Data Source
+                {% if object.data_file and request.user|can_sync:object %}
+                    <div class="card-actions">
+                        {% sync_button object %}
+                    </div>
+                {% endif %}
+            </h5>
+            <table class="table table-hover attr-table">
+                <tr>
+                    <th scope="row">Data Source</th>
+                    <td>{{ object.data_source|linkify|placeholder }}</td>
+                </tr>
+                <tr>
+                    <th scope="row">Data File</th>
+                    <td>
+                        {% if object.data_file %}
+                            {{ object.data_file|linkify }}
+                        {% elif object.data_path %}
+                            <div class="float-end text-warning">
+                                <i class="mdi mdi-alert" title="The data file associated with this object has been deleted."></i>
+                            </div>
+                            {{ object.data_path }}
+                        {% else %}
+                            <span class="text-muted">&mdash;</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Data Synced</th>
+                    <td>{{ object.data_synced|isodatetime|placeholder }}</td>
+                </tr>
+                <tr>
+                    <th scope="row">Auto Sync Enabled</th>
+                    <td>{% checkmark object.auto_sync_enabled %}</td>
+                </tr>
+            </table>
+        </div>
+        <div class="card">
+            <h5 class="card-header">Environment Parameters</h5>
+            <div class="card-body">
+                <pre class="mb-0">{{ object.environment_params|json }}</pre>
+            </div>
+        </div>
         {% include 'inc/panels/tags.html' %}
         {% include 'inc/panels/comments.html' %}
     </div>
@@ -50,6 +116,7 @@
         <div class="card">
             <h5 class="card-header">Template Code</h5>
             <div class="card-body">
+                {% include 'inc/sync_warning.html' %}
                 <pre class="mb-0"><code>{{ object.template_code }}</code></pre>
             </div>
         </div>

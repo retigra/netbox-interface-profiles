@@ -15,8 +15,8 @@ class ProfileNameWidget(forms.TextInput):
         {platform}-{device_type}-{interface_role}
     omitting device_type when it is not selected.
 
-    Requires profile_name_widget.js, which is loaded globally via
-    PluginTemplateExtension.head() in template_content.py.
+    Requires profile_name_widget.js, which is loaded by the
+    profileconfigtemplate_edit.html template.
     """
 
     def render(self, name: str, value, attrs: dict | None = None, renderer=None) -> str:

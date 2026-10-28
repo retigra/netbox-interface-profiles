@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
     from .interface_role_assignment import InterfaceRoleAssignmentType
     from .interface_template import InterfaceRoleTemplateType
+    from .profile_config_template import ProfileConfigTemplateType
     from .role_group import RoleGroupType
 
 
@@ -29,6 +30,12 @@ class InterfaceRoleType(NetBoxObjectType):
     device_roles: list[Annotated["DeviceRoleType", strawberry.lazy("dcim.graphql.types")]]
     interface_templates: list[
         Annotated["InterfaceRoleTemplateType", strawberry.lazy("netbox_interface_profiles.graphql.interface_template")]
+    ]
+    config_templates: list[
+        Annotated[
+            "ProfileConfigTemplateType",
+            strawberry.lazy("netbox_interface_profiles.graphql.profile_config_template"),
+        ]
     ]
     interface_assignments: list[
         Annotated[

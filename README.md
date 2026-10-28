@@ -68,6 +68,23 @@ PLUGINS_CONFIG = {
 }
 ```
 
+## Config Templates
+
+Config templates hold the Jinja2 template that renders the configuration of an interface. Like NetBox's
+own config templates, the template code is either stored locally or synchronized from a data file in a
+data source, optionally automatically when the file changes. Environment parameters and debug output work
+the same as well.
+
+A config template applies to an interface when:
+
+- its **interface role** is the role assigned to the interface,
+- its **platform** is the platform of the device,
+- its **device type** is empty or the device type of the device,
+- all of its **device tags** are on the device, and all of its **interface tags** are on the interface.
+
+When multiple config templates apply, the one with the highest **weight** is used.
+`ProfileConfigTemplate.objects.for_interface(interface)` returns the applicable templates, highest weight first.
+
 ## Permissions
 
 Assigning a role reconfigures the interface, so who may assign which role is controlled with regular NetBox

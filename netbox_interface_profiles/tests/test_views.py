@@ -8,6 +8,7 @@ from dcim.choices import InterfaceTypeChoices
 from dcim.models import Device, DeviceRole, DeviceType, Interface, Manufacturer, Platform, Site, SiteGroup
 from django.test import Client
 from django.urls import reverse
+from django.utils.html import escape
 
 from ..models import (
     InterfaceRole,
@@ -31,13 +32,13 @@ class InterfaceRoleViewTestCase(PluginViewTestCase):
         InterfaceRole.objects.create(name="View Role 1", description="First")
         InterfaceRole.objects.create(name="View Role 2", description="Second")
         cls.role = InterfaceRole.objects.create(name="View Role 3", description="")
-        interface_template = InterfaceTemplate.objects.create(
+        InterfaceTemplate.objects.create(
             interface_role=cls.role,
             name="Related Interface Template",
             enabled=True,
         )
         ProfileConfigTemplate.objects.create(
-            interface_template=interface_template,
+            interface_role=cls.role,
             platform=cls.platform,
             name="Related Config Template",
             description="",
@@ -86,9 +87,9 @@ class InterfaceRoleViewTestCase(PluginViewTestCase):
             "netbox_interface_profiles.view_profileconfigtemplate",
         )
         other_role = InterfaceRole.objects.create(name="Unrelated Role", description="")
-        other_template = InterfaceTemplate.objects.create(interface_role=other_role, name="Unrelated Template")
+        InterfaceTemplate.objects.create(interface_role=other_role, name="Unrelated Template")
         ProfileConfigTemplate.objects.create(
-            interface_template=other_template,
+            interface_role=other_role,
             platform=self.platform,
             name="Unrelated Config Template",
             template_code="",
@@ -104,6 +105,24 @@ class InterfaceRoleViewTestCase(PluginViewTestCase):
         self.assertHttpStatus(response, 200)
         self.assertContains(response, "Related Config Template")
         self.assertNotContains(response, "Unrelated Config Template")
+
+    def test_profile_config_template_detail_and_edit_views(self):
+        """The config template detail page and add form render."""
+        self.add_permissions(
+            "netbox_interface_profiles.view_profileconfigtemplate",
+            "netbox_interface_profiles.add_profileconfigtemplate",
+        )
+        config_template = ProfileConfigTemplate.objects.get(name="Related Config Template")
+
+        response = self.client.get(config_template.get_absolute_url())
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, self.role.name)
+        self.assertContains(response, escape(config_template.template_code))
+
+        response = self.client.get(reverse("plugins:netbox_interface_profiles:profileconfigtemplate_add"))
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, 'name="data_file"')
+        self.assertContains(response, 'name="interface_tags"')
 
     def test_create_interface_role(self):
         """Test creating an InterfaceRole via the add form."""
@@ -653,7 +672,7 @@ class InterfaceDetailCardTestCase(PluginViewTestCase):
             speed=1000,
         )
         cls.config_template = ProfileConfigTemplate.objects.create(
-            interface_template=cls.interface_template,
+            interface_role=cls.role,
             platform=platform,
             device_type=cls.device_type,
             name="Config Detail Template",

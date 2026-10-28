@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/stable/topics/http/urls/
 """
 
 from django.urls import path
-from netbox.views.generic import ObjectChangeLogView, ObjectJobsView, ObjectJournalView
+from netbox.views.generic import ObjectChangeLogView, ObjectJobsView, ObjectJournalView, ObjectSyncDataView
 
 from . import models, views
 
@@ -170,6 +170,11 @@ urlpatterns = (
         name="profileconfigtemplate_bulk_delete",
     ),
     path(
+        "profile-config-templates/sync/",
+        views.ProfileConfigTemplateBulkSyncDataView.as_view(),
+        name="profileconfigtemplate_bulk_sync",
+    ),
+    path(
         "profile-config-templates/<int:pk>/",
         views.ProfileConfigTemplateView.as_view(),
         name="profileconfigtemplate",
@@ -183,6 +188,12 @@ urlpatterns = (
         "profile-config-templates/<int:pk>/delete/",
         views.ProfileConfigTemplateDeleteView.as_view(),
         name="profileconfigtemplate_delete",
+    ),
+    path(
+        "profile-config-templates/<int:pk>/sync/",
+        ObjectSyncDataView.as_view(),
+        name="profileconfigtemplate_sync",
+        kwargs={"model": models.ProfileConfigTemplate},
     ),
     path(
         "profile-config-templates/<int:pk>/changelog/",

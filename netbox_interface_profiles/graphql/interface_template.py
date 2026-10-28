@@ -17,7 +17,6 @@ if TYPE_CHECKING:
     from netbox.graphql.types import ContentTypeType
 
     from .interface_role import InterfaceRoleType
-    from .profile_config_template import ProfileConfigTemplateType
 
 
 @strawberry_django.type(
@@ -30,12 +29,6 @@ class InterfaceRoleTemplateType(NetBoxObjectType):
 
     interface_role: Annotated["InterfaceRoleType", strawberry.lazy("netbox_interface_profiles.graphql.interface_role")]
     scope_type: Annotated["ContentTypeType", strawberry.lazy("netbox.graphql.types")] | None
-    config_templates: list[
-        Annotated[
-            "ProfileConfigTemplateType",
-            strawberry.lazy("netbox_interface_profiles.graphql.profile_config_template"),
-        ]
-    ]
 
 
 @strawberry.type(name="Query")

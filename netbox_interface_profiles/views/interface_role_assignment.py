@@ -239,11 +239,8 @@ def _get_applicable_roles(device: Device):
     # Has platform: filter by config template scope first
     roles = (
         models.InterfaceRole.objects.filter(
-            interface_templates__config_templates__platform=device.platform,
-        )
-        .filter(
-            Q(interface_templates__config_templates__device_type__isnull=True)
-            | Q(interface_templates__config_templates__device_type=device.device_type)
+            Q(config_templates__device_type__isnull=True) | Q(config_templates__device_type=device.device_type),
+            config_templates__platform=device.platform,
         )
         .distinct()
         .order_by("name")

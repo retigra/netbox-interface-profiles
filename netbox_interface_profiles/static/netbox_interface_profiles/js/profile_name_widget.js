@@ -41,7 +41,7 @@
 
     /**
      * Build the profile name slug from the current scope field values.
-     * Format: {platform}-{device_type}-{interface_profile}
+     * Format: {platform}-{device_type}-{interface_role}
      * device_type is omitted when no value is selected.
      *
      * @returns {string}
@@ -49,9 +49,9 @@
     function buildName() {
         const platform = getSelectedLabel("id_platform");
         const deviceType = getSelectedLabel("id_device_type");
-        const interfaceProfile = getSelectedLabel("id_interface_profile");
+        const interfaceRole = getSelectedLabel("id_interface_role");
 
-        return [platform, deviceType, interfaceProfile]
+        return [platform, deviceType, interfaceRole]
             .filter(Boolean)
             .map(slugify)
             .join("-");
@@ -59,7 +59,7 @@
 
     /**
      * Automatically populate the name field if it's empty.
-     * Called when platform or device_type is selected.
+     * Called when platform, device_type or interface_role is selected.
      */
     function autoPopulateName() {
         const nameField = document.getElementById("id_name");
@@ -79,20 +79,13 @@
             });
         }
 
-        // Listen for Select2 change events on platform and device_type fields
-        // to automatically populate the name field if it's empty.
-        const platformSelect = document.getElementById("id_platform");
-        const deviceTypeSelect = document.getElementById(
-            "id_device_type",
-        );
-
-        if (platformSelect) {
-            // Select2 fires 'change' event after selection
-            platformSelect.addEventListener("change", autoPopulateName);
-        }
-
-        if (deviceTypeSelect) {
-            deviceTypeSelect.addEventListener("change", autoPopulateName);
-        }
+        // Listen for change events on the scope fields to automatically
+        // populate the name field if it's empty.
+        ["id_platform", "id_device_type", "id_interface_role"].forEach(function (id) {
+            const select = document.getElementById(id);
+            if (select) {
+                select.addEventListener("change", autoPopulateName);
+            }
+        });
     });
 })();

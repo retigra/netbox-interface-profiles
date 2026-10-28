@@ -2,8 +2,11 @@
 Test cases for netbox interface profiles GraphQL API.
 """
 
-from ..models import InterfaceRole, InterfaceTemplate
+from dcim.models import Platform
+
+from ..models import InterfaceRole, InterfaceTemplate, ProfileConfigTemplate
 from ..testing import PluginGraphQLTestCase
+from ..testing.utils import create_tags
 
 
 class InterfaceRoleGraphQLTestCase(PluginGraphQLTestCase):
@@ -111,3 +114,49 @@ class InterfaceRoleTemplateGraphQLTestCase(PluginGraphQLTestCase):
         self.assertEqual(data[0]["mtu"], 9000)
         self.assertEqual(data[0]["mode"], "access")
         self.assertEqual(data[0]["interface_role"]["id"], str(self.role.pk))
+
+
+class ProfileConfigTemplateGraphQLTestCase(PluginGraphQLTestCase):
+    """Test ProfileConfigTemplate GraphQL queries."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.role = InterfaceRole.objects.create(name="GraphQL Config Role")
+        platform = Platform.objects.create(name="GraphQL Platform", slug="graphql-platform")
+        cls.template = ProfileConfigTemplate.objects.create(
+            name="GraphQL Config Template", interface_role=cls.role, platform=platform, weight=42, template_code="!"
+        )
+        cls.template.device_tags.set(create_tags(["GraphQL Device Tag"]))
+
+    def test_query_profile_config_template_list(self):
+        self.add_permissions(
+            "netbox_interface_profiles.view_interfacerole",
+            "netbox_interface_profiles.view_profileconfigtemplate",
+            "dcim.view_platform",
+            "extras.view_tag",
+        )
+
+        query = """
+        query {
+            profile_config_template_list {
+                name
+                weight
+                interface_role { id }
+                platform { slug }
+                device_tags { slug }
+                interface_tags { slug }
+                data_file { id }
+            }
+        }
+        """
+
+        response = self.execute_query(query)
+        self.assertIsNone(response.get("errors"))
+
+        data = response["data"]["profile_config_template_list"]
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["weight"], 42)
+        self.assertEqual(data[0]["interface_role"]["id"], str(self.role.pk))
+        self.assertEqual(data[0]["device_tags"], [{"slug": "graphql-device-tag"}])
+        self.assertEqual(data[0]["interface_tags"], [])
+        self.assertIsNone(data[0]["data_file"])

@@ -1,5 +1,5 @@
 {% extends 'generic/object.html' %}
-{% load helpers interface_roles %}
+{% load helpers interface_profiles %}
 
 {% block content %}
   <div class="row">
@@ -39,37 +39,55 @@
         <table class="table table-hover attr-table">
           <tr>
             <th scope="row">Speed (Mbps)</th>
-            <td>{% template_attribute object "speed" %}</td>
+            <td>
+              {% template_attribute object 'speed' %}
+            </td>
           </tr>
           <tr>
             <th scope="row">Duplex</th>
-            <td>{% template_attribute object "duplex" %}</td>
+            <td>
+              {% template_attribute object 'duplex' %}
+            </td>
           </tr>
           <tr>
             <th scope="row">MTU</th>
-            <td>{% template_attribute object "mtu" %}</td>
+            <td>
+              {% template_attribute object 'mtu' %}
+            </td>
           </tr>
           <tr>
             <th scope="row">Mode</th>
-            <td>{% template_attribute object "mode" %}</td>
+            <td>
+              {% template_attribute object 'mode' %}
+            </td>
           </tr>
           <tr>
             <th scope="row">Enabled</th>
-            <td>{% if object.enabled %}Yes{% else %}No{% endif %}</td>
+            <td>
+              {% if object.enabled %}
+                Yes
+              {% else %}
+                No
+              {% endif %}
+            </td>
           </tr>
           <tr>
             <th scope="row">POE Mode</th>
-            <td>{% template_attribute object "poe_mode" %}</td>
+            <td>
+              {% template_attribute object 'poe_mode' %}
+            </td>
           </tr>
           <tr>
             <th scope="row">Untagged VLAN VID</th>
-            <td>{% template_attribute object "untagged_vlan_vid" %}</td>
+            <td>
+              {% template_attribute object 'untagged_vlan_vid' %}
+            </td>
           </tr>
           <tr>
             <th scope="row">Tagged VLAN VIDs</th>
             <td>
               {% if object.tagged_vlans_vids %}
-                {{ object.tagged_vlans_vids|join:", " }}
+                {{ object.tagged_vlans_vids|join:', ' }}
               {% else %}
                 <span class="text-muted">None</span>
               {% endif %}
