@@ -2,6 +2,8 @@
 InterfaceTemplate model for netbox interface profiles.
 """
 
+from typing import cast
+
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.db import models
 from django.urls import reverse
@@ -112,10 +114,10 @@ class InterfaceTemplate(NetBoxModel):
         """Resolve untagged VLAN object for the provided site using the stored VID."""
         from ..utils import resolve_vlan_by_vid
 
-        return resolve_vlan_by_vid(site=site, vid=self.untagged_vlan_vid)
+        return resolve_vlan_by_vid(site=site, vid=cast(int | None, self.untagged_vlan_vid))
 
     def resolve_tagged_vlans(self, site):
         """Resolve tagged VLAN objects for the provided site using stored VIDs."""
         from ..utils import resolve_vlans_by_vids
 
-        return resolve_vlans_by_vids(site=site, vids=self.tagged_vlans_vids)
+        return resolve_vlans_by_vids(site=site, vids=cast(list[int], self.tagged_vlans_vids))

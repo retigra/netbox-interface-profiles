@@ -68,6 +68,28 @@ PLUGINS_CONFIG = {
 }
 ```
 
+## Permissions
+
+Assigning a profile reconfigures the interface, so who may assign which profile is controlled with regular NetBox
+object permissions on **Interface Profile Assignment**. Put profiles in a **Profile Group** (e.g. `access`,
+`trunk`) and constrain the permissions on that group:
+
+| Permission                 | Object type                  | Actions                | Constraints                                    |
+| -------------------------- | ---------------------------- | ---------------------- | ---------------------------------------------- |
+| Service desk: access ports | Interface Profile Assignment | add, change, delete    | `{"interface_profile__group__slug": "access"}` |
+| Network engineering        | Interface Profile Assignment | add, change, delete    | _(none)_                                       |
+
+Both users also need `view` on Interface Profile Assignment, Interface Profile and Interface.
+
+Constraints apply to the assignment both before and after a change. A service desk user with the permission above
+can therefore not change or clear an interface that currently has a trunk profile, not even to an access profile.
+Constraints can be combined with any other assignment attribute, e.g.
+`{"interface_profile__group__slug": "access", "interface__device__site__slug": "ams01"}`.
+
+The constraints are enforced everywhere assignments are written: the device **Interface Profiles** tab, the
+per-interface menu, the assignment forms, bulk import/edit and the REST API. The device tab and menu only offer
+the profiles the user may assign.
+
 ## Contributing
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.

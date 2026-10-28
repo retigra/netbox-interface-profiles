@@ -12,12 +12,14 @@ from .interface_profile import InterfaceProfileQuery
 from .interface_profile_assignment import InterfaceProfileAssignmentQuery
 from .interface_template import InterfaceTemplateQuery
 from .profile_config_template import ProfileConfigTemplateQuery
+from .profile_group import ProfileGroupQuery
 
 schema = [
     InterfaceProfileQuery,
     InterfaceProfileAssignmentQuery,
     InterfaceTemplateQuery,
     ProfileConfigTemplateQuery,
+    ProfileGroupQuery,
 ]
 
 __all__ = ("schema",)

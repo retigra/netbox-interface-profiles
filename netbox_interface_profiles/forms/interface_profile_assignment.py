@@ -14,7 +14,7 @@ from netbox.forms import (
 from utilities.forms.fields import DynamicModelChoiceField, DynamicModelMultipleChoiceField
 from utilities.forms.rendering import FieldSet
 
-from ..models import InterfaceProfile, InterfaceProfileAssignment
+from ..models import InterfaceProfile, InterfaceProfileAssignment, ProfileGroup
 
 
 def get_interface_profile_queryset(interface=None):
@@ -121,6 +121,12 @@ class InterfaceProfileAssignmentFilterSetForm(NetBoxModelFilterSetForm):
         queryset=InterfaceProfile.objects.all(),
         required=False,
         label=_("Interface Profile"),
+    )
+    interface_profile_group_id = DynamicModelMultipleChoiceField(
+        queryset=ProfileGroup.objects.all(),
+        required=False,
+        null_option="None",
+        label=_("Profile Group"),
     )
     device_id = DynamicModelMultipleChoiceField(
         queryset=Device.objects.all(),

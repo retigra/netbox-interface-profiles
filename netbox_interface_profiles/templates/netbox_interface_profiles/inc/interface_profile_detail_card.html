@@ -9,6 +9,10 @@
         </td>
       </tr>
       <tr>
+        <th scope="row">Profile Group</th>
+        <td>{{ profile.group|linkify|placeholder }}</td>
+      </tr>
+      <tr>
         <th scope="row">Matching Interface Templates</th>
         <td>
           {% if matching_interface_templates %}
@@ -52,9 +56,7 @@
         <th scope="row">Assigned Config Preview</th>
         <td>
           {% if assigned_config_template %}
-            <pre class="mb-0">
-              <code>{{ assigned_config_preview }}</code>
-            </pre>
+            <pre class="mb-0"><code>{{ assigned_config_preview }}</code></pre>
           {% else %}
             <span class="text-muted">No config template assigned.</span>
           {% endif %}

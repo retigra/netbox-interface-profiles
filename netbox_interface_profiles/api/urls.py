@@ -15,11 +15,13 @@ from .views import (
     InterfaceProfileViewSet,
     InterfaceTemplateViewSet,
     ProfileConfigTemplateViewSet,
+    ProfileGroupViewSet,
 )
 
 app_name = "netbox_interface_profiles"
 
 router = NetBoxRouter()
+router.register("profile-groups", ProfileGroupViewSet)
 router.register("interface-profiles", InterfaceProfileViewSet)
 router.register("interface-profile-assignments", InterfaceProfileAssignmentViewSet)
 router.register("interface-templates", InterfaceTemplateViewSet)

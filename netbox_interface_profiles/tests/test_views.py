@@ -6,7 +6,13 @@ from dcim.choices import InterfaceTypeChoices
 from dcim.models import Device, DeviceRole, DeviceType, Interface, Manufacturer, Platform, Site, SiteGroup
 from django.urls import reverse
 
-from ..models import InterfaceProfile, InterfaceProfileAssignment, InterfaceTemplate, ProfileConfigTemplate
+from ..models import (
+    InterfaceProfile,
+    InterfaceProfileAssignment,
+    InterfaceTemplate,
+    ProfileConfigTemplate,
+    ProfileGroup,
+)
 from ..testing import PluginViewTestCase
 from ..testing.utils import disable_warnings, get_random_string
 
@@ -469,7 +475,7 @@ class DeviceInterfaceProfileTabViewTestCase(PluginViewTestCase):
         self.assertTrue(InterfaceProfileAssignment.objects.filter(interface=self.interface).exists())
 
     def test_htmx_menu_endpoint_lists_profiles(self):
-        self.add_permissions("netbox_interface_profiles.view_interfaceprofileassignment")
+        self.add_permissions("dcim.view_interface", "netbox_interface_profiles.view_interfaceprofileassignment")
 
         url = reverse(
             "plugins:netbox_interface_profiles:interfaceprofileassignment_htmx_menu",
@@ -481,7 +487,8 @@ class DeviceInterfaceProfileTabViewTestCase(PluginViewTestCase):
         self.assertContains(response, self.profile.name)
 
     def test_htmx_set_endpoint_assigns_profile(self):
-        self.add_permissions("netbox_interface_profiles.add_interfaceprofileassignment")
+        # The interface already has an assignment, so this is a change
+        self.add_permissions("dcim.view_interface", "netbox_interface_profiles.change_interfaceprofileassignment")
         new_profile = InterfaceProfile.objects.create(name="New HTMX Profile", description="")
 
         url = reverse(
@@ -511,7 +518,7 @@ class DeviceInterfaceProfileTabViewTestCase(PluginViewTestCase):
 
     def test_htmx_menu_filters_profiles_by_device_role_scope(self):
         """Ensure role-scoped profiles are filtered for the device in HTMX menu."""
-        self.add_permissions("netbox_interface_profiles.view_interfaceprofileassignment")
+        self.add_permissions("dcim.view_interface", "netbox_interface_profiles.view_interfaceprofileassignment")
 
         matching_profile = InterfaceProfile.objects.create(name="Role Matched", description="")
         matching_profile.device_roles.add(self.interface.device.role)
@@ -628,3 +635,54 @@ class InterfaceProfileSyncViewTestCase(PluginViewTestCase):
         response = self.client.post(url, {"dry_run": "on"}, follow=False)
 
         self.assertEqual(response.status_code, 302)
+
+
+class ProfileGroupViewTestCase(PluginViewTestCase):
+    """Test ProfileGroup list, detail and create views."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.group = ProfileGroup.objects.create(name="Access", slug="access", description="Edge ports")
+        cls.profile = InterfaceProfile.objects.create(name="Access VLAN 10", group=cls.group)
+        InterfaceProfile.objects.create(name="Ungrouped Profile")
+
+    def test_list_profile_groups(self):
+        self.add_permissions("netbox_interface_profiles.view_profilegroup")
+
+        response = self.client.get(reverse("plugins:netbox_interface_profiles:profilegroup_list"))
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, self.group.name)
+
+    def test_view_profile_group_detail(self):
+        self.add_permissions(
+            "netbox_interface_profiles.view_profilegroup",
+            "netbox_interface_profiles.view_interfaceprofile",
+        )
+
+        response = self.client.get(self.group.get_absolute_url())
+
+        self.assertHttpStatus(response, 200)
+        self.assertEqual(response.context["object"], self.group)
+        self.assertContains(response, reverse("plugins:netbox_interface_profiles:interfaceprofile_list"))
+
+    def test_create_profile_group(self):
+        self.add_permissions("netbox_interface_profiles.add_profilegroup")
+
+        response = self.client.post(
+            reverse("plugins:netbox_interface_profiles:profilegroup_add"),
+            {"name": "Trunk", "slug": "trunk", "description": "Uplinks"},
+        )
+
+        self.assertHttpStatus(response, 302)
+        self.assertTrue(ProfileGroup.objects.filter(slug="trunk").exists())
+
+    def test_interface_profile_list_filters_by_group(self):
+        self.add_permissions("netbox_interface_profiles.view_interfaceprofile")
+
+        url = reverse("plugins:netbox_interface_profiles:interfaceprofile_list")
+        response = self.client.get(url, {"group": self.group.slug})
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, self.profile.name)
+        self.assertNotContains(response, "Ungrouped Profile")

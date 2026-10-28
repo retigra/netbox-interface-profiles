@@ -29,7 +29,7 @@ def _site_vlan_scope_query(site: Site) -> Q:
     return query
 
 
-def resolve_vlan_by_vid(site: Site, vid: int) -> VLAN | None:
+def resolve_vlan_by_vid(site: Site, vid: int | None) -> VLAN | None:
     """
     Resolve a single VLAN object by VID for a site context.
 

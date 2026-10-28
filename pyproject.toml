@@ -42,7 +42,7 @@ Tracker = "https://github.com/wouterdebruijn/netbox-interface-profiles/issues"
 [tool.ruff]
 line-length = 120
 target-version = "py312"
-exclude = ["docker/**"]
+extend-exclude = ["docker/**", "docs/netbox"]
 
 [tool.ruff.lint]
 select = [
@@ -70,8 +70,12 @@ include = ["netbox_interface_profiles*"]
 netbox_interface_profiles = ["templates/**", "static/**", "locale/**/*.mo"]
 
 [dependency-groups]
-dev = ["netbox-types==4.6.5", "ty>=0.0.20"]
+dev = [
+    "netbox-types==4.7.4",
+    "ruff>=0.14.14",
+    "ty>=0.0.20",
+]
 test = ["bs4>=0.0.2"]
 
 [tool.ty.src]
-exclude = ["build/**", "docker/**", "netbox_interface_profiles/testing/**"]
+exclude = ["build/**", "docker/**", "docs/netbox/**", "netbox_interface_profiles/testing/**"]

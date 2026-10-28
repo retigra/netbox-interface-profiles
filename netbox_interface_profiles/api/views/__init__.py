@@ -12,10 +12,12 @@ from .interface_profile import InterfaceProfileViewSet
 from .interface_profile_assignment import InterfaceProfileAssignmentViewSet
 from .interface_template import InterfaceTemplateViewSet
 from .profile_config_template import ProfileConfigTemplateViewSet
+from .profile_group import ProfileGroupViewSet
 
 __all__ = (
     "InterfaceProfileAssignmentViewSet",
     "InterfaceProfileViewSet",
     "InterfaceTemplateViewSet",
     "ProfileConfigTemplateViewSet",
+    "ProfileGroupViewSet",
 )

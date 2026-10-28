@@ -43,6 +43,12 @@ class InterfaceProfileAssignmentTable(NetBoxTable):
         orderable=False,
     )
     interface_profile = tables.Column(linkify=True)
+    interface_profile_group = tables.Column(
+        accessor="interface_profile.group",
+        verbose_name="Profile Group",
+        linkify=True,
+        order_by=("interface_profile__group__name",),
+    )
     tags = columns.TagColumn(url_name="plugins:netbox_interface_profiles:interfaceprofileassignment_list")
 
     class Meta(NetBoxTable.Meta):
@@ -53,6 +59,7 @@ class InterfaceProfileAssignmentTable(NetBoxTable):
             "interface",
             "device",
             "interface_profile",
+            "interface_profile_group",
             "tags",
             "created",
             "last_updated",

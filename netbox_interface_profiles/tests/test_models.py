@@ -8,7 +8,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from ipam.models import VLAN, VLANGroup
 
-from ..models import InterfaceProfile, InterfaceTemplate
+from ..models import InterfaceProfile, InterfaceTemplate, ProfileGroup
 from ..testing import PluginModelTestCase
 from ..testing.utils import create_tags, get_random_string
 
@@ -307,3 +307,16 @@ class InterfaceProfileAssignmentSignalTestCase(PluginModelTestCase):
         self.interface.refresh_from_db()
         self.assertTrue(self.interface.enabled)
         self.assertEqual(self.interface.speed, 1000)
+
+
+class ProfileGroupTestCase(PluginModelTestCase):
+    """Test ProfileGroup model behaviour."""
+
+    def test_deleting_group_ungroups_profiles(self):
+        group = ProfileGroup.objects.create(name="Trunk", slug="trunk")
+        profile = InterfaceProfile.objects.create(name="Uplink Trunk", group=group)
+
+        group.delete()
+
+        profile.refresh_from_db()
+        self.assertIsNone(profile.group)

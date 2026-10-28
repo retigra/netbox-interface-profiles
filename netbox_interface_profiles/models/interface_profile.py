@@ -16,6 +16,14 @@ class InterfaceProfile(JobsMixin, NetBoxModel):
 
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
+    group = models.ForeignKey(
+        to="netbox_interface_profiles.ProfileGroup",
+        on_delete=models.SET_NULL,
+        related_name="interface_profiles",
+        blank=True,
+        null=True,
+        help_text="Profile group used to scope assignment permissions.",
+    )
     device_roles = models.ManyToManyField(
         to="dcim.DeviceRole",
         blank=True,

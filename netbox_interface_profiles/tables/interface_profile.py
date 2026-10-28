@@ -10,6 +10,7 @@ from ..models import InterfaceProfile
 
 class InterfaceProfileTable(NetBoxTable):
     name = tables.Column(linkify=True)
+    group = tables.Column(linkify=True)
     description = tables.Column()
     device_roles = columns.ManyToManyColumn(linkify_item=True)
     tags = columns.TagColumn(url_name="plugins:netbox_interface_profiles:interfaceprofile_list")
@@ -20,6 +21,7 @@ class InterfaceProfileTable(NetBoxTable):
             "pk",
             "id",
             "name",
+            "group",
             "description",
             "device_roles",
             "tags",
@@ -29,5 +31,6 @@ class InterfaceProfileTable(NetBoxTable):
         )
         default_columns = (
             "name",
+            "group",
             "description",
         )

@@ -6,7 +6,7 @@ import django_filters
 from dcim.models import Device, Interface
 from netbox.filtersets import NetBoxModelFilterSet
 
-from ..models import InterfaceProfile, InterfaceProfileAssignment
+from ..models import InterfaceProfile, InterfaceProfileAssignment, ProfileGroup
 
 
 class InterfaceProfileAssignmentFilterSet(NetBoxModelFilterSet):
@@ -22,6 +22,11 @@ class InterfaceProfileAssignmentFilterSet(NetBoxModelFilterSet):
         queryset=InterfaceProfile.objects.all(),
         label="Interface Profile (ID)",
     )
+    interface_profile_group_id = django_filters.ModelMultipleChoiceFilter(
+        field_name="interface_profile__group",
+        queryset=ProfileGroup.objects.all(),
+        label="Profile Group (ID)",
+    )
     device_id = django_filters.ModelMultipleChoiceFilter(
         field_name="interface__device",
         queryset=Device.objects.all(),
@@ -30,7 +35,7 @@ class InterfaceProfileAssignmentFilterSet(NetBoxModelFilterSet):
 
     class Meta:
         model = InterfaceProfileAssignment
-        fields = ("id", "interface_id", "interface_profile_id", "device_id")
+        fields = ("id", "interface_id", "interface_profile_id", "interface_profile_group_id", "device_id")
 
     def search(self, queryset, name, value):
         """Support global keyword search against related interface and profile names."""

@@ -12,10 +12,12 @@ from .interface_profile import InterfaceProfileFilterSet
 from .interface_profile_assignment import InterfaceProfileAssignmentFilterSet
 from .interface_template import InterfaceTemplateFilterSet
 from .profile_config_template import ProfileConfigTemplateFilterSet
+from .profile_group import ProfileGroupFilterSet
 
 __all__ = (
     "InterfaceProfileAssignmentFilterSet",
     "InterfaceProfileFilterSet",
     "InterfaceTemplateFilterSet",
     "ProfileConfigTemplateFilterSet",
+    "ProfileGroupFilterSet",
 )

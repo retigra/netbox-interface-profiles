@@ -17,10 +17,12 @@ from django.views import View
 from ipam.models import IPAddress
 from netbox.object_actions import BulkDelete, BulkEdit, BulkRename, DeleteObject, EditObject
 from netbox.views import generic
+from utilities.exceptions import PermissionsViolation
 from utilities.views import ViewTab, register_model_view
 
 from .. import filtersets, forms, models, tables
 from ..object_actions import BulkAssignInterfaceProfile, BulkRemoveInterfaceProfile
+from ..permissions import assign_profile, restrict_assignable_profiles
 
 # ---------------------------------------------------------------------------
 # InterfaceProfileAssignment CRUD views
@@ -164,16 +166,22 @@ class DeviceInterfaceProfileTabView(DeviceComponentsView):
                 return redirect(return_url)
 
             created = updated = 0
-            with transaction.atomic():
-                for iface in interfaces:
-                    _assignment, was_created = models.InterfaceProfileAssignment.objects.update_or_create(
-                        interface=iface,
-                        defaults={"interface_profile": profile},
-                    )
-                    if was_created:
-                        created += 1
-                    else:
-                        updated += 1
+            try:
+                with transaction.atomic():
+                    for iface in interfaces:
+                        _assignment, was_created = assign_profile(request.user, iface, profile)
+                        if was_created:
+                            created += 1
+                        else:
+                            updated += 1
+            except PermissionsViolation:
+                messages.error(
+                    request,
+                    _("You are not permitted to assign {profile} to {interface}. No changes were made.").format(
+                        profile=profile, interface=iface
+                    ),
+                )
+                return redirect(return_url)
             if created:
                 messages.success(
                     request, _("Assigned {profile} to {count} interface(s).").format(profile=profile, count=created)
@@ -196,6 +204,13 @@ class DeviceInterfaceProfileTabView(DeviceComponentsView):
                 for assignment in assignments:
                     assignment.delete()
             messages.success(request, _("Removed {count} profile assignment(s).").format(count=len(assignments)))
+
+            skipped = models.InterfaceProfileAssignment.objects.filter(interface__in=interfaces).count()
+            if skipped:
+                messages.warning(
+                    request,
+                    _("Skipped {count} assignment(s) you are not permitted to remove.").format(count=skipped),
+                )
 
         return redirect(return_url)
 
@@ -261,7 +276,7 @@ class InterfaceProfileAssignmentMenuHTMXView(View):
             return HttpResponseForbidden()
 
         interface = get_object_or_404(
-            Interface.objects.select_related(
+            Interface.objects.restrict(request.user, "view").select_related(
                 "device__platform",
                 "device__device_type",
                 "profile_assignment__interface_profile",
@@ -270,12 +285,24 @@ class InterfaceProfileAssignmentMenuHTMXView(View):
         )
 
         profiles = _get_applicable_profiles(interface.device)
-        current_profile = getattr(getattr(interface, "profile_assignment", None), "interface_profile", None)
+        assignment = getattr(interface, "profile_assignment", None)
+        current_profile = getattr(assignment, "interface_profile", None)
 
         if current_profile and not profiles.filter(pk=current_profile.pk).exists():
             profiles = (
                 (profiles | models.InterfaceProfile.objects.filter(pk=current_profile.pk)).distinct().order_by("name")
             )
+
+        # Profiles outside the user's permissions are listed but disabled, so it is clear they exist
+        assignable_profile_ids = set(
+            restrict_assignable_profiles(profiles, request.user, interface).values_list("pk", flat=True)
+        )
+        can_clear = (
+            assignment is not None
+            and models.InterfaceProfileAssignment.objects.restrict(request.user, "delete")
+            .filter(pk=assignment.pk)
+            .exists()
+        )
 
         return render(
             request,
@@ -284,6 +311,8 @@ class InterfaceProfileAssignmentMenuHTMXView(View):
                 "interface": interface,
                 "profiles": profiles,
                 "current_profile": current_profile,
+                "assignable_profile_ids": assignable_profile_ids,
+                "can_clear": can_clear,
             },
         )
 
@@ -297,13 +326,19 @@ class InterfaceProfileAssignmentSetHTMXView(View):
         if not (can_add or can_change):
             return HttpResponseForbidden()
 
-        interface = get_object_or_404(Interface.objects.all(), pk=interface_id)
+        interface = get_object_or_404(Interface.objects.restrict(request.user, "view"), pk=interface_id)
         profile = get_object_or_404(models.InterfaceProfile.objects.all(), pk=profile_id)
 
-        models.InterfaceProfileAssignment.objects.update_or_create(
-            interface=interface,
-            defaults={"interface_profile": profile},
-        )
+        try:
+            assign_profile(request.user, interface, profile)
+        except PermissionsViolation:
+            # A plain 403 is swallowed by HTMX; refresh so the message is shown instead
+            messages.error(
+                request,
+                _("You are not permitted to assign {profile} to {interface}.").format(
+                    profile=profile, interface=interface
+                ),
+            )
         return HttpResponse(status=204, headers={"HX-Refresh": "true"})
 
 
@@ -314,11 +349,21 @@ class InterfaceProfileAssignmentRemoveHTMXView(View):
         if not request.user.has_perm("netbox_interface_profiles.delete_interfaceprofileassignment"):
             return HttpResponseForbidden()
 
-        assignments = list(
-            models.InterfaceProfileAssignment.objects.select_related("interface", "interface_profile").filter(
-                interface_id=interface_id
-            )
+        assignment = (
+            models.InterfaceProfileAssignment.objects.select_related("interface", "interface_profile")
+            .filter(interface_id=interface_id)
+            .first()
         )
-        for assignment in assignments:
+        if assignment is None:
+            return HttpResponse(status=204, headers={"HX-Refresh": "true"})
+
+        if models.InterfaceProfileAssignment.objects.restrict(request.user, "delete").filter(pk=assignment.pk).exists():
             assignment.delete()
+        else:
+            messages.error(
+                request,
+                _("You are not permitted to remove {profile} from {interface}.").format(
+                    profile=assignment.interface_profile, interface=assignment.interface
+                ),
+            )
         return HttpResponse(status=204, headers={"HX-Refresh": "true"})

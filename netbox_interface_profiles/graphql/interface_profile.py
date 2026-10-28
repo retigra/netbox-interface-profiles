@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
     from .interface_profile_assignment import InterfaceProfileAssignmentType
     from .interface_template import InterfaceProfileTemplateType
+    from .profile_group import ProfileGroupType
 
 
 @strawberry_django.type(
@@ -24,6 +25,7 @@ if TYPE_CHECKING:
 class InterfaceProfileType(NetBoxObjectType):
     """GraphQL type for InterfaceProfile model."""
 
+    group: Annotated["ProfileGroupType", strawberry.lazy("netbox_interface_profiles.graphql.profile_group")] | None
     device_roles: list[Annotated["DeviceRoleType", strawberry.lazy("dcim.graphql.types")]]
     interface_templates: list[
         Annotated[

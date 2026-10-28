@@ -2,7 +2,9 @@
 Test cases for netbox interface profiles REST API.
 """
 
-from ..models import InterfaceProfile
+from django.urls import reverse
+
+from ..models import InterfaceProfile, ProfileGroup
 from ..testing import PluginAPITestCase
 from ..testing.utils import disable_warnings, get_random_string
 
@@ -168,3 +170,43 @@ class InterfaceProfileAPIValidationTestCase(PluginAPITestCase):
         response = self.client.post(url, data, format="json")
         self.assertHttpStatus(response, 400)
         self.assertIn("name", response.data)
+
+
+class ProfileGroupAPITestCase(PluginAPITestCase):
+    """Test ProfileGroup API endpoints and the group field on InterfaceProfile."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.group = ProfileGroup.objects.create(name="Access", slug="access")
+
+    def setUp(self):
+        super().setUp()
+        self.list_url_name = "plugins-api:netbox_interface_profiles-api:profilegroup-list"
+        self.detail_url_name = "plugins-api:netbox_interface_profiles-api:profilegroup-detail"
+
+    def test_list_profile_groups(self):
+        self.add_permissions("netbox_interface_profiles.view_profilegroup")
+
+        response = self.client.get(self._get_list_url())
+
+        self.assertHttpStatus(response, 200)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(response.data["results"][0]["slug"], "access")
+
+    def test_create_profile_group(self):
+        self.add_permissions("netbox_interface_profiles.add_profilegroup")
+
+        response = self.client.post(self._get_list_url(), {"name": "Trunk", "slug": "trunk"}, format="json")
+
+        self.assertHttpStatus(response, 201)
+        self.assertTrue(ProfileGroup.objects.filter(slug="trunk").exists())
+
+    def test_assign_group_to_interface_profile(self):
+        self.add_permissions("netbox_interface_profiles.add_interfaceprofile")
+
+        url = reverse("plugins-api:netbox_interface_profiles-api:interfaceprofile-list")
+        response = self.client.post(url, {"name": "Access VLAN 10", "group": self.group.pk}, format="json")
+
+        self.assertHttpStatus(response, 201)
+        self.assertEqual(response.data["group"]["id"], self.group.pk)
+        self.assertEqual(InterfaceProfile.objects.get(name="Access VLAN 10").group, self.group)

@@ -9,6 +9,7 @@ from django.utils.translation import gettext_lazy as _
 from netbox.object_actions import ObjectAction
 
 from .forms import DeviceBulkAssignProfileForm
+from .permissions import restrict_assignable_profiles
 
 __all__ = (
     "BulkAssignInterfaceProfile",
@@ -47,7 +48,9 @@ class BulkAssignInterfaceProfile(InterfaceProfileAssignmentAction):
     def get_context(cls, context, obj):
         form = DeviceBulkAssignProfileForm(device=context["object"])
         return {
-            "profiles": form.fields["interface_profile"].queryset,
+            "profiles": restrict_assignable_profiles(
+                form.fields["interface_profile"].queryset, context["request"].user
+            ),
         }
 
 

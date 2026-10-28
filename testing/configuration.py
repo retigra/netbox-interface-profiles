@@ -166,4 +166,3 @@ REMOTE_AUTH_DEFAULT_PERMISSIONS = {}
 
 # Maintenance mode
 MAINTENANCE_MODE = False
-

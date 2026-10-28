@@ -50,6 +50,15 @@ from .profile_config_template import (
     ProfileConfigTemplateListView,
     ProfileConfigTemplateView,
 )
+from .profile_group import (
+    ProfileGroupBulkDeleteView,
+    ProfileGroupBulkEditView,
+    ProfileGroupBulkImportView,
+    ProfileGroupDeleteView,
+    ProfileGroupEditView,
+    ProfileGroupListView,
+    ProfileGroupView,
+)
 
 __all__ = (
     "DeviceInterfaceProfileTabView",
@@ -86,4 +95,11 @@ __all__ = (
     "ProfileConfigTemplateEditView",
     "ProfileConfigTemplateListView",
     "ProfileConfigTemplateView",
+    "ProfileGroupBulkDeleteView",
+    "ProfileGroupBulkEditView",
+    "ProfileGroupBulkImportView",
+    "ProfileGroupDeleteView",
+    "ProfileGroupEditView",
+    "ProfileGroupListView",
+    "ProfileGroupView",
 )

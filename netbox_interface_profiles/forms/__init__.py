@@ -31,6 +31,12 @@ from .profile_config_template import (
     ProfileConfigTemplateForm,
     ProfileConfigTemplateImportForm,
 )
+from .profile_group import (
+    ProfileGroupBulkEditForm,
+    ProfileGroupFilterSetForm,
+    ProfileGroupForm,
+    ProfileGroupImportForm,
+)
 
 __all__ = (
     "DeviceBulkAssignProfileForm",
@@ -51,4 +57,8 @@ __all__ = (
     "ProfileConfigTemplateFilterSetForm",
     "ProfileConfigTemplateForm",
     "ProfileConfigTemplateImportForm",
+    "ProfileGroupBulkEditForm",
+    "ProfileGroupFilterSetForm",
+    "ProfileGroupForm",
+    "ProfileGroupImportForm",
 )

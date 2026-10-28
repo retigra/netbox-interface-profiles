@@ -14,6 +14,27 @@ from netbox.views.generic import ObjectChangeLogView, ObjectJournalView
 from . import models, views
 
 urlpatterns = (
+    # Profile Groups
+    path("profile-groups/", views.ProfileGroupListView.as_view(), name="profilegroup_list"),
+    path("profile-groups/add/", views.ProfileGroupEditView.as_view(), name="profilegroup_add"),
+    path("profile-groups/import/", views.ProfileGroupBulkImportView.as_view(), name="profilegroup_import"),
+    path("profile-groups/edit/", views.ProfileGroupBulkEditView.as_view(), name="profilegroup_bulk_edit"),
+    path("profile-groups/delete/", views.ProfileGroupBulkDeleteView.as_view(), name="profilegroup_bulk_delete"),
+    path("profile-groups/<int:pk>/", views.ProfileGroupView.as_view(), name="profilegroup"),
+    path("profile-groups/<int:pk>/edit/", views.ProfileGroupEditView.as_view(), name="profilegroup_edit"),
+    path("profile-groups/<int:pk>/delete/", views.ProfileGroupDeleteView.as_view(), name="profilegroup_delete"),
+    path(
+        "profile-groups/<int:pk>/changelog/",
+        ObjectChangeLogView.as_view(),
+        name="profilegroup_changelog",
+        kwargs={"model": models.ProfileGroup},
+    ),
+    path(
+        "profile-groups/<int:pk>/journal/",
+        ObjectJournalView.as_view(),
+        name="profilegroup_journal",
+        kwargs={"model": models.ProfileGroup},
+    ),
     # Interface Profiles
     path("interface-profiles/", views.InterfaceProfileListView.as_view(), name="interfaceprofile_list"),
     path("interface-profiles/add/", views.InterfaceProfileEditView.as_view(), name="interfaceprofile_add"),

@@ -15,10 +15,12 @@ from .interface_profile import InterfaceProfileSerializer
 from .interface_profile_assignment import InterfaceProfileAssignmentSerializer
 from .interface_template import InterfaceTemplateSerializer
 from .profile_config_template import ProfileConfigTemplateSerializer
+from .profile_group import ProfileGroupSerializer
 
 __all__ = (
     "InterfaceProfileAssignmentSerializer",
     "InterfaceProfileSerializer",
     "InterfaceTemplateSerializer",
     "ProfileConfigTemplateSerializer",
+    "ProfileGroupSerializer",
 )

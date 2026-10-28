@@ -7,101 +7,46 @@ https://docs.netbox.dev/en/stable/plugins/development/navigation/
 
 from netbox.plugins import PluginMenu, PluginMenuButton, PluginMenuItem
 
-interface_profile_buttons = [
-    PluginMenuButton(
-        link="plugins:netbox_interface_profiles:interfaceprofile_add",
-        title="Add",
-        icon_class="mdi mdi-plus-thick",
-    ),
-    PluginMenuButton(
-        link="plugins:netbox_interface_profiles:interfaceprofile_import",
-        title="Import",
-        icon_class="mdi mdi-upload",
-    ),
-]
 
-profile_config_template_buttons = [
-    PluginMenuButton(
-        link="plugins:netbox_interface_profiles:profileconfigtemplate_add",
-        title="Add",
-        icon_class="mdi mdi-plus-thick",
-    ),
-    PluginMenuButton(
-        link="plugins:netbox_interface_profiles:profileconfigtemplate_import",
-        title="Import",
-        icon_class="mdi mdi-upload",
-    ),
-]
-
-interface_template_buttons = [
-    PluginMenuButton(
-        link="plugins:netbox_interface_profiles:interfacetemplate_add",
-        title="Add",
-        icon_class="mdi mdi-plus-thick",
-    ),
-    PluginMenuButton(
-        link="plugins:netbox_interface_profiles:interfacetemplate_import",
-        title="Import",
-        icon_class="mdi mdi-upload",
-    ),
-]
-
-interface_profiles = (
-    PluginMenuItem(
-        link="plugins:netbox_interface_profiles:interfaceprofile_list",
-        link_text="Interface Profiles",
-        buttons=interface_profile_buttons,
+def _menu_item(model_name: str, link_text: str) -> PluginMenuItem:
+    """Build a menu item linking to a model's list view, with Add and Import buttons."""
+    return PluginMenuItem(
+        link=f"plugins:netbox_interface_profiles:{model_name}_list",
+        link_text=link_text,
+        buttons=(
+            PluginMenuButton(
+                link=f"plugins:netbox_interface_profiles:{model_name}_add",
+                title="Add",
+                icon_class="mdi mdi-plus-thick",
+            ),
+            PluginMenuButton(
+                link=f"plugins:netbox_interface_profiles:{model_name}_import",
+                title="Import",
+                icon_class="mdi mdi-upload",
+            ),
+        ),
         auth_required=True,
-    ),
+    )
+
+
+# Items follow the model relations: groups contain profiles, which are assigned to interfaces
+profiles = (
+    _menu_item("profilegroup", "Profile Groups"),
+    _menu_item("interfaceprofile", "Interface Profiles"),
+    _menu_item("interfaceprofileassignment", "Assignments"),
 )
 
-profile_config_templates = (
-    PluginMenuItem(
-        link="plugins:netbox_interface_profiles:profileconfigtemplate_list",
-        link_text="Config Templates",
-        buttons=profile_config_template_buttons,
-        auth_required=True,
-    ),
-)
-
-interface_templates = (
-    PluginMenuItem(
-        link="plugins:netbox_interface_profiles:interfacetemplate_list",
-        link_text="Interface Templates",
-        buttons=interface_template_buttons,
-        auth_required=True,
-    ),
-)
-
-assignment_buttons = [
-    PluginMenuButton(
-        link="plugins:netbox_interface_profiles:interfaceprofileassignment_add",
-        title="Add",
-        icon_class="mdi mdi-plus-thick",
-    ),
-    PluginMenuButton(
-        link="plugins:netbox_interface_profiles:interfaceprofileassignment_import",
-        title="Import",
-        icon_class="mdi mdi-upload",
-    ),
-]
-
-assignments = (
-    PluginMenuItem(
-        link="plugins:netbox_interface_profiles:interfaceprofileassignment_list",
-        link_text="Assignments",
-        buttons=assignment_buttons,
-        auth_required=True,
-    ),
+# Interface templates belong to a profile, config templates to an interface template
+templates = (
+    _menu_item("interfacetemplate", "Interface Templates"),
+    _menu_item("profileconfigtemplate", "Config Templates"),
 )
 
 menu = PluginMenu(
     label="Interface Profiles",
     groups=(
-        ("Profiles", interface_profiles),
-        ("Templates", profile_config_templates),
-        ("Interface Templates", interface_templates),
-        ("Assignments", assignments),
+        ("Profiles", profiles),
+        ("Templates", templates),
     ),
     icon_class="mdi mdi-ethernet",
 )

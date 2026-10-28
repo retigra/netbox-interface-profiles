@@ -12,6 +12,7 @@ from .interface_profile import InterfaceProfileTable
 from .interface_profile_assignment import DeviceInterfaceTable, InterfaceProfileAssignmentTable
 from .interface_template import InterfaceTemplateTable
 from .profile_config_template import ProfileConfigTemplateTable
+from .profile_group import ProfileGroupTable
 
 __all__ = (
     "DeviceInterfaceTable",
@@ -19,4 +20,5 @@ __all__ = (
     "InterfaceProfileTable",
     "InterfaceTemplateTable",
     "ProfileConfigTemplateTable",
+    "ProfileGroupTable",
 )

@@ -24,6 +24,10 @@
                         <a href="{{ object.interface_profile.get_absolute_url }}">{{ object.interface_profile }}</a>
                     </td>
                 </tr>
+                <tr>
+                    <th scope="row">Profile Group</th>
+                    <td>{{ object.interface_profile.group|linkify|placeholder }}</td>
+                </tr>
             </table>
         </div>
         {% include 'inc/panels/custom_fields.html' %}

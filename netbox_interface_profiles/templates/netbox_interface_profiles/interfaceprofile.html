@@ -14,6 +14,10 @@
             <td>{{ object.name }}</td>
           </tr>
           <tr>
+            <th scope="row">Group</th>
+            <td>{{ object.group|linkify|placeholder }}</td>
+          </tr>
+          <tr>
             <th scope="row">Description</th>
             <td>{{ object.description|default:'&mdash;' }}</td>
           </tr>
