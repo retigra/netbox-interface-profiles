@@ -533,6 +533,25 @@ class ProfileConfigTemplateTestCase(PluginModelTestCase):
         self.interface.refresh_from_db()
         self.assertFalse(ProfileConfigTemplate.objects.for_interface(self.interface).exists())
 
+    def test_in_scope_ignores_role(self):
+        device_tag, interface_tag, other_tag = self.tags
+        self.interface.tags.add(interface_tag)
+        self.create_template("Platform Default")
+        self.create_template("Other Role", interface_role=InterfaceRole.objects.create(name="Other Role"))
+        self.create_template("Other Platform", platform=self.other_platform)
+        self.create_template("Other Tag", device_tags=[other_tag])
+        self.create_template("Interface Tagged", interface_tags=[interface_tag])
+        unassigned = Interface.objects.create(device=self.device, name="eth1", type=InterfaceTypeChoices.TYPE_1GE_FIXED)
+
+        self.assertCountEqual(
+            ProfileConfigTemplate.objects.in_scope(self.interface).values_list("name", flat=True),
+            ["Platform Default", "Other Role", "Interface Tagged"],
+        )
+        self.assertCountEqual(
+            ProfileConfigTemplate.objects.in_scope(unassigned).values_list("name", flat=True),
+            ["Platform Default", "Other Role"],
+        )
+
     def test_render_does_not_escape(self):
         template = self.create_template("Render", template_code="interface {{ interface.name }}\n description {{ x }}")
 

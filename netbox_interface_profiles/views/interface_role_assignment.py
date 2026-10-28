@@ -216,50 +216,25 @@ class DeviceInterfaceRoleTabView(DeviceComponentsView):
         return redirect(return_url)
 
 
-def _get_applicable_roles(device: Device):
+def _get_applicable_roles(interface: Interface):
     """
-    Return roles applicable to a device.
+    Return roles applicable to an interface.
 
     Filters by:
-    1. Config template scope (platform + device_type)
+    1. Config template scope (if role has config templates, see ProfileConfigTemplate.objects.in_scope())
     2. Device role restrictions (if role has device_roles set)
     """
-    if device.platform is None:
-        # No platform: return roles without device role if device has no role,
-        # or with matching device role if device has one
-        if device.role:
-            return (
-                models.InterfaceRole.objects.filter(Q(device_roles__isnull=True) | Q(device_roles=device.role))
-                .distinct()
-                .order_by("name")
-            )
-        else:
-            return models.InterfaceRole.objects.filter(device_roles__isnull=True).order_by("name")
+    device = interface.device
+    config_templates = models.ProfileConfigTemplate.objects.all()
 
-    # Has platform: filter by config template scope first
-    roles = (
-        models.InterfaceRole.objects.filter(
-            Q(config_templates__device_type__isnull=True) | Q(config_templates__device_type=device.device_type),
-            config_templates__platform=device.platform,
-        )
-        .distinct()
-        .order_by("name")
+    # Roles without config templates are unrestricted, others need a config template in scope
+    roles = models.InterfaceRole.objects.filter(
+        ~Q(pk__in=config_templates.values("interface_role"))
+        | Q(pk__in=config_templates.in_scope(interface).values("interface_role"))
     )
 
-    if not roles.exists():
-        # Fallback to all roles (or device-role filtered if device has role)
-        if device.role:
-            return (
-                models.InterfaceRole.objects.filter(Q(device_roles__isnull=True) | Q(device_roles=device.role))
-                .distinct()
-                .order_by("name")
-            )
-        else:
-            return models.InterfaceRole.objects.filter(device_roles__isnull=True).order_by("name")
-
-    # Apply device role filtering on the config-template-filtered queryset
-    if device.role:
-        roles = roles.filter(Q(device_roles__isnull=True) | Q(device_roles=device.role)).distinct()
+    if device.role_id:
+        roles = roles.filter(Q(device_roles__isnull=True) | Q(device_roles=device.role_id)).distinct()
     else:
         roles = roles.filter(device_roles__isnull=True)
 
@@ -282,12 +257,14 @@ class InterfaceRoleAssignmentMenuHTMXView(View):
             pk=interface_id,
         )
 
-        roles = _get_applicable_roles(interface.device)
+        roles = _get_applicable_roles(interface)
         assignment = getattr(interface, "role_assignment", None)
         current_role = getattr(assignment, "interface_role", None)
 
         if current_role and not roles.filter(pk=current_role.pk).exists():
-            roles = (roles | models.InterfaceRole.objects.filter(pk=current_role.pk)).distinct().order_by("name")
+            roles = models.InterfaceRole.objects.filter(Q(pk__in=roles.values("pk")) | Q(pk=current_role.pk)).order_by(
+                "name"
+            )
 
         # Roles outside the user's permissions are listed but disabled, so it is clear they exist
         assignable_role_ids = set(

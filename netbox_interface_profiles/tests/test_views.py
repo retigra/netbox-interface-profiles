@@ -19,7 +19,7 @@ from ..models import (
 )
 from ..tables.interface_role_assignment import DEVICE_INTERFACE_BUTTONS
 from ..testing import PluginViewTestCase
-from ..testing.utils import disable_warnings, get_random_string
+from ..testing.utils import create_tags, disable_warnings, get_random_string
 
 
 class InterfaceRoleViewTestCase(PluginViewTestCase):
@@ -632,6 +632,70 @@ class DeviceInterfaceRoleTabViewTestCase(PluginViewTestCase):
         self.assertContains(response, matching_role.name)
         self.assertContains(response, unscoped_role.name)
         self.assertNotContains(response, non_matching_role.name)
+
+    def create_role_with_template(self, name, platform, device_tags=(), interface_tags=(), role=None, **kwargs):
+        role = role or InterfaceRole.objects.create(name=name, description="")
+        template = ProfileConfigTemplate.objects.create(name=name, interface_role=role, platform=platform, **kwargs)
+        template.device_tags.set(device_tags)
+        template.interface_tags.set(interface_tags)
+        return role
+
+    def get_htmx_menu(self):
+        url = reverse(
+            "plugins:netbox_interface_profiles:interfaceroleassignment_htmx_menu",
+            kwargs={"interface_id": self.interface.pk},
+        )
+        return self.client.get(url)
+
+    def test_htmx_menu_filters_roles_by_config_template_scope(self):
+        """Ensure the HTMX menu only lists roles with a config template in scope, or without config templates."""
+        self.add_permissions("dcim.view_interface", "netbox_interface_profiles.view_interfaceroleassignment")
+
+        device = self.interface.device
+        platform = device.platform = Platform.objects.create(name="Menu Platform", slug="menu-platform")
+        other_platform = Platform.objects.create(name="Other", slug="other")
+        device.save()
+        device_tag, interface_tag, other_tag = create_tags(["Menu Device Tag", "Menu Interface Tag", "Menu Other Tag"])
+        device.tags.add(device_tag)
+        self.interface.tags.add(interface_tag)
+
+        in_scope = [
+            self.create_role_with_template("In Scope Platform", platform),
+            self.create_role_with_template("In Scope Device Type", platform, device_type=device.device_type),
+            self.create_role_with_template(
+                "In Scope Tags", platform, device_tags=[device_tag], interface_tags=[interface_tag]
+            ),
+            InterfaceRole.objects.create(name="Without Template", description=""),
+        ]
+        out_of_scope = [
+            self.create_role_with_template("Out Of Scope Platform", other_platform),
+            self.create_role_with_template("Out Of Scope Device Tag", platform, device_tags=[other_tag]),
+            self.create_role_with_template(
+                "Out Of Scope Interface Tag", platform, interface_tags=[interface_tag, other_tag]
+            ),
+        ]
+        # The current role remains listed, even without a config template in scope
+        self.create_role_with_template("Current Role Template", other_platform, role=self.role)
+
+        response = self.get_htmx_menu()
+
+        self.assertHttpStatus(response, 200)
+        for role in [*in_scope, self.role]:
+            self.assertContains(response, role.name)
+        for role in out_of_scope:
+            self.assertNotContains(response, role.name)
+
+    def test_htmx_menu_without_platform_hides_roles_with_config_templates(self):
+        self.add_permissions("dcim.view_interface", "netbox_interface_profiles.view_interfaceroleassignment")
+        platform = Platform.objects.create(name="Menu Platform", slug="menu-platform")
+        templated_role = self.create_role_with_template("With Template", platform)
+        untemplated_role = InterfaceRole.objects.create(name="Without Template", description="")
+
+        response = self.get_htmx_menu()
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, untemplated_role.name)
+        self.assertNotContains(response, templated_role.name)
 
 
 class InterfaceDetailCardTestCase(PluginViewTestCase):

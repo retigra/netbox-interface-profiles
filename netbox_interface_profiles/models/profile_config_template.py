@@ -11,29 +11,40 @@ from utilities.querysets import RestrictedQuerySet
 
 
 class ProfileConfigTemplateQuerySet(RestrictedQuerySet):
+    def in_scope(self, interface):
+        """
+        Return the config templates whose scope matches an interface, regardless of their interface role.
+
+        A template is in scope when its platform matches, its device type is empty or matches, and all of its
+        device and interface tags are present on the device and interface respectively.
+        """
+        device = interface.device
+
+        if device.platform_id is None:
+            return self.none()
+
+        return (
+            self.filter(platform_id=device.platform_id)
+            .filter(models.Q(device_type__isnull=True) | models.Q(device_type_id=device.device_type_id))
+            .exclude(device_tags__in=self._missing_tags(device))
+            .exclude(interface_tags__in=self._missing_tags(interface))
+        )
+
     def for_interface(self, interface, interface_role=None):
         """
         Return the config templates applicable to an interface, highest weight first.
 
-        A template applies when its interface role and platform match, its device type is empty or matches,
-        and all of its device and interface tags are present on the device and interface respectively.
+        A template applies when it is in scope of the interface (see in_scope()) and its interface role matches.
         The interface role defaults to the role assigned to the interface.
         """
-        device = interface.device
-
         if interface_role is None:
             assignment = getattr(interface, "role_assignment", None)
             interface_role = getattr(assignment, "interface_role", None)
-        if interface_role is None or device.platform_id is None:
+        if interface_role is None:
             return self.none()
 
         return (
-            self.filter(interface_role=interface_role, platform_id=device.platform_id)
-            .filter(models.Q(device_type__isnull=True) | models.Q(device_type_id=device.device_type_id))
-            .exclude(device_tags__in=self._missing_tags(device))
-            .exclude(interface_tags__in=self._missing_tags(interface))
-            .distinct()
-            .order_by("-weight", "name", "pk")
+            self.in_scope(interface).filter(interface_role=interface_role).distinct().order_by("-weight", "name", "pk")
         )
 
     @staticmethod
