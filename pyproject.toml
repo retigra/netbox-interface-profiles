@@ -35,7 +35,7 @@ requires-python = ">=3.12.0"
 test = ["check-manifest==0.51", "ruff==0.14.14", "pytest==9.0.2"]
 
 [project.urls]
-Documentation = "https://github.com/wouterdebruijn/netbox-interface-profiles/blob/main/README.md"
+Documentation = "https://wouterdebruijn.github.io/netbox-interface-profiles/"
 Source = "https://github.com/wouterdebruijn/netbox-interface-profiles"
 Tracker = "https://github.com/wouterdebruijn/netbox-interface-profiles/issues"
 

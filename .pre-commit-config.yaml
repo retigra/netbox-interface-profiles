@@ -18,13 +18,3 @@ repos:
       hooks:
           - id: check-manifest
             stages: [manual]
-
-    - repo: local
-      hooks:
-          - id: mkdocs-build
-            name: "Build documentation"
-            description: "Build the documentation with mkdocs"
-            files: "docs/"
-            entry: .hooks/mkdocs-build.sh
-            language: system
-            pass_filenames: false

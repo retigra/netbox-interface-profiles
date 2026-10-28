@@ -1,0 +1,24 @@
+/* Teal accent, matching the logo. */
+:root {
+	--sl-color-accent-low: #022c28;
+	--sl-color-accent: #0d9488;
+	--sl-color-accent-high: #99f6e4;
+}
+
+:root[data-theme='light'] {
+	--sl-color-accent-low: #ccfbf1;
+	--sl-color-accent: #0f766e;
+	--sl-color-accent-high: #134e4a;
+}
+
+/* On phones, show only the logo next to the version selector. The title stays available to screen readers. */
+@media (max-width: 30rem) {
+	.site-title span {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+	}
+}

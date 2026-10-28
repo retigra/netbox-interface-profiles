@@ -1,0 +1,45 @@
+---
+// Dropdown to switch documentation versions. Only the current version is known at build time;
+// the other options are loaded from versions.json in the browser.
+import Select from '@astrojs/starlight/components/Select.astro';
+
+import { root, version } from '../../site.mjs';
+---
+
+<version-select data-root={root} data-version={version}>
+	<Select
+		icon="seti:git"
+		label="Documentation version"
+		options={[{ label: version, value: version, selected: true }]}
+		width="6.5em"
+	/>
+</version-select>
+
+<script>
+	import { loadVersions, urlForVersion } from '../versions';
+
+	class VersionSelect extends HTMLElement {
+		async connectedCallback() {
+			const { root = '/', version = 'dev' } = this.dataset;
+			const select = this.querySelector('select')!;
+
+			select.addEventListener('change', async () => {
+				location.href = await urlForVersion(root, version, select.value);
+			});
+
+			const data = await loadVersions(root);
+			if (!data) return;
+
+			// The "latest" build shows as the release it is an alias of
+			const current = version === 'latest' ? data.latest : version;
+			select.replaceChildren(
+				...data.versions.map((value) => {
+					const label = value === data.latest ? `${value} (latest)` : value;
+					return new Option(label, value, false, value === current);
+				}),
+			);
+		}
+	}
+
+	customElements.define('version-select', VersionSelect);
+</script>

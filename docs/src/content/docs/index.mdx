@@ -1,0 +1,46 @@
+---
+title: NetBox Interface Profiles
+description: Assign roles to NetBox interfaces and keep their configuration in sync.
+template: splash
+hero:
+  tagline: Give interfaces a role, such as an access port or an uplink, and let the plugin configure them. Speed, mode, VLANs and rendered device configuration follow the role.
+  image:
+    file: ../../assets/logo.svg
+  actions:
+    - text: Get started
+      link: getting-started/introduction/
+      icon: right-arrow
+    - text: View on GitHub
+      link: https://github.com/wouterdebruijn/netbox-interface-profiles
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+<CardGrid>
+	<Card title="Interface roles" icon="puzzle">
+		Describe what an interface is for, once. Assign the role from the device page, in bulk, or through the
+		REST API.
+	</Card>
+	<Card title="Interface templates" icon="setting">
+		Set speed, duplex, MTU, mode, PoE and VLANs per role, globally or per site group or site. VLANs are
+		resolved by VID in the interface's site.
+	</Card>
+	<Card title="Safe synchronization" icon="approve-check">
+		Change a template and resynchronize every interface with the role. Review the changes of a dry run
+		before applying them.
+	</Card>
+	<Card title="Config templates" icon="document">
+		Render per-interface configuration with Jinja2, per platform, device type and tags, and embed it in
+		NetBox device config templates.
+	</Card>
+	<Card title="Delegated permissions" icon="approve-check">
+		Let the service desk assign access-port roles while trunk roles stay with network engineering, using
+		regular NetBox object permissions.
+	</Card>
+	<Card title="Native NetBox" icon="rocket">
+		REST and GraphQL APIs, change logging, tags, custom fields, bulk import and edit: all models behave
+		like any other NetBox object.
+	</Card>
+</CardGrid>

@@ -2,6 +2,8 @@
 
 NetBox plugin for managing interface configuration profiles.
 
+**Documentation: <https://wouterdebruijn.github.io/netbox-interface-profiles/>**
+
 ## Features
 
 _Features will be documented as they are developed._

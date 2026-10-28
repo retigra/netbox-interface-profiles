@@ -1,6 +1,6 @@
 sources = netbox_interface_profiles
 
-.PHONY: test format lint unittest pre-commit clean
+.PHONY: test format lint unittest pre-commit docs docs-build clean
 test: format lint unittest
 
 format:
@@ -10,9 +10,15 @@ format:
 lint:
 	ruff check $(sources) tests
 
+docs:
+	cd docs && npm ci && npm run dev
+
+docs-build:
+	cd docs && npm ci && npm run build
+
 pre-commit:
 	pre-commit run --all-files
 
 clean:
 	rm -rf *.egg-info
-	rm -rf .tox dist site
+	rm -rf .tox dist site docs/dist docs/.astro

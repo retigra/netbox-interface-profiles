@@ -1,0 +1,19 @@
+---
+// Site title with a version selector next to it, so it is visible on every screen size.
+import Default from '@astrojs/starlight/components/SiteTitle.astro';
+
+import VersionSelect from './VersionSelect.astro';
+---
+
+<div class="sl-flex">
+	<Default />
+	<VersionSelect />
+</div>
+
+<style>
+	div {
+		align-items: center;
+		gap: 1rem;
+		min-width: 0;
+	}
+</style>
