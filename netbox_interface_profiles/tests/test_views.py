@@ -568,7 +568,7 @@ class DeviceInterfaceRoleTabViewTestCase(PluginViewTestCase):
             )
         )
         match = re.search(r'hx-headers=\'\{"X-CSRFToken": "([^"]+)"\}\'', response.content.decode())
-        self.assertIsNotNone(match)
+        assert match is not None
 
         url = reverse(
             "plugins:netbox_interface_profiles:interfaceroleassignment_htmx_set",

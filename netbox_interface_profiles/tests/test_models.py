@@ -3,6 +3,7 @@ Test cases for netbox interface profiles models.
 """
 
 import hashlib
+from typing import Any, cast
 
 from core.models import AutoSyncRecord, DataFile, DataSource, ObjectType
 from dcim.choices import InterfaceModeChoices, InterfaceTypeChoices
@@ -611,8 +612,7 @@ class ProfileConfigTemplateTestCase(PluginModelTestCase):
         self.assertEqual(template.data_source, data_source)
         self.assertEqual(template.data_path, "access.j2")
         self.assertIsNotNone(template.data_synced)
-        self.assertTrue(
-            AutoSyncRecord.objects.filter(
-                object_type=ObjectType.objects.get_for_model(ProfileConfigTemplate), object_id=template.pk
-            ).exists()
+        auto_sync_records = cast(Any, AutoSyncRecord).objects.filter(
+            object_type=ObjectType.objects.get_for_model(ProfileConfigTemplate), object_id=template.pk
         )
+        self.assertTrue(auto_sync_records.exists())

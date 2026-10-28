@@ -2,6 +2,8 @@
 ProfileConfigTemplate model for netbox interface profiles.
 """
 
+from typing import Any, cast
+
 from django.db import models
 from django.urls import reverse
 from extras.models.mixins import RenderTemplateMixin
@@ -108,7 +110,7 @@ class ProfileConfigTemplate(SyncedDataMixin, RenderTemplateMixin, NetBoxModel):
     file_extension = None
     as_attachment = None
 
-    objects = ProfileConfigTemplateQuerySet.as_manager()
+    objects = cast(Any, ProfileConfigTemplateQuerySet).as_manager()
 
     class Meta:
         ordering = ("interface_role", "platform", "-weight", "name")
@@ -126,9 +128,9 @@ class ProfileConfigTemplate(SyncedDataMixin, RenderTemplateMixin, NetBoxModel):
         """
         Synchronize template content from the designated DataFile (if any).
         """
-        self.template_code = self.validate_synced_value("template_code", self.data_file.data_as_string)
+        self.template_code = self.validate_synced_value("template_code", cast(Any, self.data_file).data_as_string)
 
-    sync_data.alters_data = True
+    cast(Any, sync_data).alters_data = True
 
     def get_environment_params(self):
         """

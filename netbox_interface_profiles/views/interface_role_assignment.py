@@ -2,6 +2,8 @@
 InterfaceRoleAssignment views for netbox interface profiles.
 """
 
+from typing import Any, cast
+
 from dcim.filtersets import InterfaceFilterSet
 from dcim.forms import InterfaceFilterForm
 from dcim.models import Device, Interface
@@ -224,7 +226,7 @@ def _get_applicable_roles(interface: Interface):
     1. Config template scope (if role has config templates, see ProfileConfigTemplate.objects.in_scope())
     2. Device role restrictions (if role has device_roles set)
     """
-    device = interface.device
+    device = cast(Any, interface.device)
     config_templates = models.ProfileConfigTemplate.objects.all()
 
     # Roles without config templates are unrestricted, others need a config template in scope

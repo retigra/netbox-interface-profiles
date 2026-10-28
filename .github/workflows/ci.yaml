@@ -21,7 +21,7 @@ jobs:
         uses: astral-sh/setup-uv@v5
 
       - name: Run Ruff
-        run: uvx ruff@0.11.12 check netbox_interface_profiles/
+        run: uvx ruff@0.14.14 check netbox_interface_profiles/
 
   test:
     name: Test (Python ${{ matrix.python-version }})
