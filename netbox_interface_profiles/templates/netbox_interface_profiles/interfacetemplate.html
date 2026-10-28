@@ -1,5 +1,5 @@
 {% extends 'generic/object.html' %}
-{% load helpers %}
+{% load helpers interface_profiles %}
 
 {% block content %}
   <div class="row">
@@ -39,19 +39,19 @@
         <table class="table table-hover attr-table">
           <tr>
             <th scope="row">Speed (Mbps)</th>
-            <td>{{ object.speed|placeholder }}</td>
+            <td>{% template_attribute object "speed" %}</td>
           </tr>
           <tr>
             <th scope="row">Duplex</th>
-            <td>{{ object.duplex|placeholder }}</td>
+            <td>{% template_attribute object "duplex" %}</td>
           </tr>
           <tr>
             <th scope="row">MTU</th>
-            <td>{{ object.mtu|placeholder }}</td>
+            <td>{% template_attribute object "mtu" %}</td>
           </tr>
           <tr>
             <th scope="row">Mode</th>
-            <td>{{ object.mode|placeholder }}</td>
+            <td>{% template_attribute object "mode" %}</td>
           </tr>
           <tr>
             <th scope="row">Enabled</th>
@@ -59,11 +59,11 @@
           </tr>
           <tr>
             <th scope="row">POE Mode</th>
-            <td>{{ object.poe_mode|placeholder }}</td>
+            <td>{% template_attribute object "poe_mode" %}</td>
           </tr>
           <tr>
             <th scope="row">Untagged VLAN VID</th>
-            <td>{{ object.untagged_vlan_vid|placeholder }}</td>
+            <td>{% template_attribute object "untagged_vlan_vid" %}</td>
           </tr>
           <tr>
             <th scope="row">Tagged VLAN VIDs</th>

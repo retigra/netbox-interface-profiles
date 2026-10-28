@@ -28,3 +28,14 @@ def sync_value(value) -> SafeString:
     if isinstance(value, Model):
         return _render_object(value)
     return format_html("{}", value)
+
+
+@register.simple_tag
+def template_attribute(template, field: str) -> SafeString:
+    """Render an interface template attribute, indicating when synchronization clears it on the interface."""
+    value = getattr(template, field)
+    if value not in (None, ""):
+        return format_html("{}", value)
+    if template.is_set_null(field):
+        return mark_safe('<span class="badge text-bg-warning" title="Cleared on the interface">Clear</span>')
+    return PLACEHOLDER

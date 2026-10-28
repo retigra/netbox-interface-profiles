@@ -16,7 +16,7 @@ from netbox.forms import (
 from utilities.forms import get_field_value
 from utilities.forms.fields import ContentTypeChoiceField, DynamicModelChoiceField, DynamicModelMultipleChoiceField
 from utilities.forms.rendering import FieldSet
-from utilities.forms.widgets import HTMXSelect
+from utilities.forms.widgets import BulkEditNullBooleanSelect, HTMXSelect
 from utilities.templatetags.builtins.filters import bettertitle
 
 from ..models import InterfaceProfile, InterfaceTemplate
@@ -52,9 +52,10 @@ class InterfaceTemplateForm(NetBoxModelForm):
         label=_("Speed (Mbps)"),
         help_text=_("Interface speed in megabits per second (e.g., 1000, 10000)"),
     )
-    duplex = forms.ChoiceField(
+    duplex = forms.TypedChoiceField(
         choices=[("", "———"), ("auto", "Auto"), ("half", "Half"), ("full", "Full")],
         required=False,
+        empty_value=None,
         label=_("Duplex"),
     )
     mtu = forms.IntegerField(
@@ -65,7 +66,7 @@ class InterfaceTemplateForm(NetBoxModelForm):
     )
 
     # Mode
-    mode = forms.ChoiceField(
+    mode = forms.TypedChoiceField(
         choices=[
             ("", "———"),
             ("access", "Access"),
@@ -73,6 +74,7 @@ class InterfaceTemplateForm(NetBoxModelForm):
             ("tagged-all", "Tagged All"),
         ],
         required=False,
+        empty_value=None,
         label=_("Mode"),
         help_text=_("Interface mode (access/tagged/tagged-all)"),
     )
@@ -86,6 +88,7 @@ class InterfaceTemplateForm(NetBoxModelForm):
     poe_mode = forms.CharField(
         max_length=50,
         required=False,
+        empty_value=None,
         label=_("POE Mode"),
         help_text=_("POE mode (power-supply, power-device, etc.)"),
     )
@@ -108,10 +111,24 @@ class InterfaceTemplateForm(NetBoxModelForm):
     fieldsets = (
         FieldSet("interface_profile", "scope_type", "scope", name=_("Scope")),
         FieldSet("name", "description", "tags", name=_("Basic Information")),
-        FieldSet("speed", "duplex", "mtu", "enabled", name=_("Physical Configuration")),
-        FieldSet("mode", name=_("Layer 2 Configuration")),
-        FieldSet("untagged_vlan_vid", "tagged_vlans_vids", name=_("VLAN Configuration")),
-        FieldSet("poe_mode", name=_("POE Configuration")),
+        FieldSet(
+            "speed",
+            "set_null_speed",
+            "duplex",
+            "set_null_duplex",
+            "mtu",
+            "set_null_mtu",
+            "enabled",
+            name=_("Physical Configuration"),
+        ),
+        FieldSet("mode", "set_null_mode", name=_("Layer 2 Configuration")),
+        FieldSet(
+            "untagged_vlan_vid",
+            "set_null_untagged_vlan_vid",
+            "tagged_vlans_vids",
+            name=_("VLAN Configuration"),
+        ),
+        FieldSet("poe_mode", "set_null_poe_mode", name=_("POE Configuration")),
     )
 
     class Meta:
@@ -129,6 +146,12 @@ class InterfaceTemplateForm(NetBoxModelForm):
             "poe_mode",
             "untagged_vlan_vid",
             "tagged_vlans_vids",
+            "set_null_speed",
+            "set_null_duplex",
+            "set_null_mtu",
+            "set_null_mode",
+            "set_null_poe_mode",
+            "set_null_untagged_vlan_vid",
             "tags",
         )
 
@@ -207,6 +230,12 @@ class InterfaceTemplateImportForm(NetBoxModelImportForm):
             "poe_mode",
             "untagged_vlan_vid",
             "tagged_vlans_vids",
+            "set_null_speed",
+            "set_null_duplex",
+            "set_null_mtu",
+            "set_null_mode",
+            "set_null_poe_mode",
+            "set_null_untagged_vlan_vid",
         )
 
 
@@ -261,6 +290,18 @@ class InterfaceTemplateBulkEditForm(NetBoxModelBulkEditForm):
     )
     poe_mode = forms.CharField(max_length=50, required=False, label=_("POE Mode"))
     description = forms.CharField(max_length=200, required=False)
+    set_null_speed = forms.NullBooleanField(required=False, label=_("Clear speed"), widget=BulkEditNullBooleanSelect())
+    set_null_duplex = forms.NullBooleanField(
+        required=False, label=_("Clear duplex"), widget=BulkEditNullBooleanSelect()
+    )
+    set_null_mtu = forms.NullBooleanField(required=False, label=_("Clear MTU"), widget=BulkEditNullBooleanSelect())
+    set_null_mode = forms.NullBooleanField(required=False, label=_("Clear mode"), widget=BulkEditNullBooleanSelect())
+    set_null_poe_mode = forms.NullBooleanField(
+        required=False, label=_("Clear POE mode"), widget=BulkEditNullBooleanSelect()
+    )
+    set_null_untagged_vlan_vid = forms.NullBooleanField(
+        required=False, label=_("Clear untagged VLAN"), widget=BulkEditNullBooleanSelect()
+    )
 
     class Meta:
         nullable_fields = ("description", "scope", "speed", "duplex", "mtu", "mode", "poe_mode")

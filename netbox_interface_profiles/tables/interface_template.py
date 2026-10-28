@@ -18,6 +18,12 @@ class InterfaceTemplateTable(NetBoxTable):
     mtu = tables.Column(verbose_name="MTU")
     poe_mode = tables.Column(verbose_name="PoE Mode")
     untagged_vlan_vid = tables.Column(verbose_name="Untagged VLAN VID")
+    set_null_speed = tables.BooleanColumn(verbose_name="Clear Speed")
+    set_null_duplex = tables.BooleanColumn(verbose_name="Clear Duplex")
+    set_null_mtu = tables.BooleanColumn(verbose_name="Clear MTU")
+    set_null_mode = tables.BooleanColumn(verbose_name="Clear Mode")
+    set_null_poe_mode = tables.BooleanColumn(verbose_name="Clear PoE Mode")
+    set_null_untagged_vlan_vid = tables.BooleanColumn(verbose_name="Clear Untagged VLAN")
     tagged_vlans_vids = tables.TemplateColumn(
         template_code='{{ value|join:", " }}',
         verbose_name="Tagged VLAN VIDs",
@@ -42,6 +48,12 @@ class InterfaceTemplateTable(NetBoxTable):
             "poe_mode",
             "untagged_vlan_vid",
             "tagged_vlans_vids",
+            "set_null_speed",
+            "set_null_duplex",
+            "set_null_mtu",
+            "set_null_mode",
+            "set_null_poe_mode",
+            "set_null_untagged_vlan_vid",
             "tags",
             "created",
             "last_updated",

@@ -5,9 +5,20 @@ InterfaceTemplate model for netbox interface profiles.
 from typing import cast
 
 from django.contrib.contenttypes.fields import GenericForeignKey
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
 from netbox.models import NetBoxModel
+
+# Template fields that are skipped by synchronization when empty, unless their set_null_<field> flag is enabled
+NULLABLE_TEMPLATE_FIELDS = (
+    "speed",
+    "duplex",
+    "mtu",
+    "mode",
+    "poe_mode",
+    "untagged_vlan_vid",
+)
 
 
 class InterfaceTemplate(NetBoxModel):
@@ -93,6 +104,38 @@ class InterfaceTemplate(NetBoxModel):
         help_text="List of tagged VLAN IDs (VIDs) as JSON array. Will be resolved to actual VLANs in target site.",
     )
 
+    # Explicitly clear interface attributes, as an empty value leaves the interface unchanged
+    set_null_speed = models.BooleanField(
+        default=False,
+        verbose_name="Clear speed",
+        help_text="Clear the interface speed when no speed is set",
+    )
+    set_null_duplex = models.BooleanField(
+        default=False,
+        verbose_name="Clear duplex",
+        help_text="Clear the interface duplex when no duplex is set",
+    )
+    set_null_mtu = models.BooleanField(
+        default=False,
+        verbose_name="Clear MTU",
+        help_text="Clear the interface MTU when no MTU is set",
+    )
+    set_null_mode = models.BooleanField(
+        default=False,
+        verbose_name="Clear mode",
+        help_text="Clear the interface mode when no mode is set. This also removes all VLAN assignments.",
+    )
+    set_null_poe_mode = models.BooleanField(
+        default=False,
+        verbose_name="Clear POE mode",
+        help_text="Clear the interface POE mode when no POE mode is set",
+    )
+    set_null_untagged_vlan_vid = models.BooleanField(
+        default=False,
+        verbose_name="Clear untagged VLAN",
+        help_text="Clear the interface untagged VLAN when no untagged VLAN VID is set",
+    )
+
     class Meta:
         ordering = ("interface_profile", "name")
         verbose_name = "Interface Template"
@@ -109,6 +152,23 @@ class InterfaceTemplate(NetBoxModel):
 
     def get_absolute_url(self) -> str:
         return reverse("plugins:netbox_interface_profiles:interfacetemplate", args=[self.pk])
+
+    def clean(self):
+        super().clean()
+
+        errors = {
+            f"set_null_{field}": "Remove the value to clear this attribute."
+            for field in NULLABLE_TEMPLATE_FIELDS
+            if getattr(self, f"set_null_{field}") and getattr(self, field) not in (None, "")
+        }
+        if self.set_null_mode and (self.untagged_vlan_vid is not None or self.tagged_vlans_vids):
+            errors.setdefault("set_null_mode", "VLANs cannot be assigned to an interface without a mode.")
+        if errors:
+            raise ValidationError(errors)
+
+    def is_set_null(self, field: str) -> bool:
+        """Return whether synchronization should clear the interface attribute for an empty template field."""
+        return field in NULLABLE_TEMPLATE_FIELDS and getattr(self, f"set_null_{field}")
 
     def resolve_untagged_vlan(self, site):
         """Resolve untagged VLAN object for the provided site using the stored VID."""

@@ -64,6 +64,12 @@ class InterfaceTemplateFilterSet(NetBoxModelFilterSet):
             "mode",
             "enabled",
             "poe_mode",
+            "set_null_speed",
+            "set_null_duplex",
+            "set_null_mtu",
+            "set_null_mode",
+            "set_null_poe_mode",
+            "set_null_untagged_vlan_vid",
         )
 
     def filter_scope_site(self, queryset, name, value):

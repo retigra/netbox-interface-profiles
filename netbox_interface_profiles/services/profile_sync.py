@@ -71,13 +71,20 @@ def _build_diff(interface, template: InterfaceTemplate) -> dict[str, tuple[Any, 
 
     for field in SYNC_SCALAR_FIELDS:
         desired = getattr(template, field)
-        if field != "enabled" and desired is None:
+        if desired == "":
+            # A blank choice means no value, just like None
+            desired = None
+        if field != "enabled" and desired is None and not template.is_set_null(field):
             continue
         current = getattr(interface, field)
         if current != desired:
             changes[field] = (current, desired)
 
-    if template.untagged_vlan_vid is not None:
+    if "mode" in changes and changes["mode"][1] is None:
+        # NetBox only allows an untagged VLAN on interfaces with a mode
+        if interface.untagged_vlan_id is not None:
+            changes["untagged_vlan"] = (interface.untagged_vlan, None)
+    elif template.untagged_vlan_vid is not None or template.is_set_null("untagged_vlan_vid"):
         desired_untagged = template.resolve_untagged_vlan(interface.device.site)
         current_untagged = interface.untagged_vlan
         if interface.untagged_vlan_id != getattr(desired_untagged, "pk", None):

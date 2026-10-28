@@ -8,7 +8,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from ipam.models import VLAN, VLANGroup
 
-from ..models import InterfaceProfile, InterfaceTemplate, ProfileGroup
+from ..forms import InterfaceTemplateForm
+from ..models import InterfaceProfile, InterfaceProfileAssignment, InterfaceTemplate, ProfileGroup
 from ..testing import PluginModelTestCase
 from ..testing.utils import create_tags, get_random_string
 
@@ -205,6 +206,56 @@ class InterfaceTemplateTestCase(PluginModelTestCase):
         self.assertEqual(len(resolved_tagged), 1)
         self.assertEqual(resolved_tagged[0].pk, site_vlan.pk)
 
+    def test_set_null_requires_empty_value(self):
+        """Clearing an attribute and setting a value for it at the same time is rejected."""
+        template = InterfaceTemplate(
+            interface_profile=self.profile,
+            name="Conflicting Template",
+            speed=1000,
+            set_null_speed=True,
+            set_null_mtu=True,
+        )
+
+        with self.assertRaises(ValidationError) as context:
+            template.full_clean()
+
+        self.assertEqual(set(context.exception.error_dict), {"set_null_speed"})
+
+    def test_set_null_mode_rejects_vlans(self):
+        """An interface without a mode cannot carry VLANs, so clearing the mode excludes them."""
+        template = InterfaceTemplate(
+            interface_profile=self.profile,
+            name="Modeless Template",
+            set_null_mode=True,
+            tagged_vlans_vids=[20],
+        )
+
+        with self.assertRaises(ValidationError) as context:
+            template.full_clean()
+
+        self.assertEqual(set(context.exception.error_dict), {"set_null_mode"})
+
+    def test_template_form_stores_blank_choices_as_null(self):
+        """Empty choices from the edit form are stored as None, so they leave the interface unchanged."""
+        form = InterfaceTemplateForm(
+            data={
+                "interface_profile": self.profile.pk,
+                "name": "Form Template",
+                "duplex": "",
+                "mode": "",
+                "poe_mode": "",
+                "set_null_duplex": "on",
+            }
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        template = form.save()
+        self.assertIsNone(template.duplex)
+        self.assertIsNone(template.mode)
+        self.assertIsNone(template.poe_mode)
+        self.assertTrue(template.set_null_duplex)
+        self.assertFalse(template.set_null_mode)
+
 
 class InterfaceProfileAssignmentSignalTestCase(PluginModelTestCase):
     """Test automatic template application on interface profile assignment."""
@@ -271,8 +322,6 @@ class InterfaceProfileAssignmentSignalTestCase(PluginModelTestCase):
             tagged_vlans_vids=[20],
         )
 
-        from ..models import InterfaceProfileAssignment
-
         InterfaceProfileAssignment.objects.create(
             interface=self.interface,
             interface_profile=self.profile,
@@ -297,8 +346,6 @@ class InterfaceProfileAssignmentSignalTestCase(PluginModelTestCase):
             speed=1000,
         )
 
-        from ..models import InterfaceProfileAssignment
-
         InterfaceProfileAssignment.objects.create(
             interface=self.interface,
             interface_profile=self.profile,
@@ -307,6 +354,79 @@ class InterfaceProfileAssignmentSignalTestCase(PluginModelTestCase):
         self.interface.refresh_from_db()
         self.assertTrue(self.interface.enabled)
         self.assertEqual(self.interface.speed, 1000)
+
+    def _configure_interface(self):
+        self.interface.speed = 1000000
+        self.interface.duplex = "full"
+        self.interface.mtu = 9000
+        self.interface.mode = InterfaceModeChoices.MODE_ACCESS
+        self.interface.poe_mode = "pse"
+        self.interface.untagged_vlan = self.untagged_vlan
+        self.interface.save()
+
+    def test_assignment_leaves_empty_template_attributes_unchanged(self):
+        """Empty template attributes, including blank choices, do not change the interface."""
+        self._configure_interface()
+        InterfaceTemplate.objects.create(
+            interface_profile=self.profile,
+            name="Empty Template",
+            enabled=True,
+            duplex="",
+            mode="",
+            poe_mode="",
+        )
+
+        InterfaceProfileAssignment.objects.create(interface=self.interface, interface_profile=self.profile)
+
+        self.interface.refresh_from_db()
+        self.assertEqual(self.interface.speed, 1000000)
+        self.assertEqual(self.interface.duplex, "full")
+        self.assertEqual(self.interface.mtu, 9000)
+        self.assertEqual(self.interface.mode, InterfaceModeChoices.MODE_ACCESS)
+        self.assertEqual(self.interface.poe_mode, "pse")
+        self.assertEqual(self.interface.untagged_vlan_id, self.untagged_vlan.pk)
+
+    def test_assignment_clears_set_null_attributes(self):
+        """Template attributes marked set_null are cleared on the interface."""
+        self._configure_interface()
+        InterfaceTemplate.objects.create(
+            interface_profile=self.profile,
+            name="Clearing Template",
+            enabled=True,
+            mode=InterfaceModeChoices.MODE_ACCESS,
+            set_null_speed=True,
+            set_null_duplex=True,
+            set_null_mtu=True,
+            set_null_poe_mode=True,
+            set_null_untagged_vlan_vid=True,
+        )
+
+        InterfaceProfileAssignment.objects.create(interface=self.interface, interface_profile=self.profile)
+
+        self.interface.refresh_from_db()
+        self.assertIsNone(self.interface.speed)
+        self.assertIsNone(self.interface.duplex)
+        self.assertIsNone(self.interface.mtu)
+        self.assertEqual(self.interface.mode, InterfaceModeChoices.MODE_ACCESS)
+        self.assertIsNone(self.interface.poe_mode)
+        self.assertIsNone(self.interface.untagged_vlan)
+
+    def test_assignment_clears_mode(self):
+        """Clearing the mode also removes the untagged VLAN, as NetBox requires a mode for VLANs."""
+        self._configure_interface()
+        InterfaceTemplate.objects.create(
+            interface_profile=self.profile,
+            name="Clear Mode Template",
+            enabled=True,
+            set_null_mode=True,
+        )
+
+        InterfaceProfileAssignment.objects.create(interface=self.interface, interface_profile=self.profile)
+
+        self.interface.refresh_from_db()
+        self.assertIsNone(self.interface.mode)
+        self.assertIsNone(self.interface.untagged_vlan)
+        self.assertEqual(self.interface.mtu, 9000)
 
 
 class ProfileGroupTestCase(PluginModelTestCase):
