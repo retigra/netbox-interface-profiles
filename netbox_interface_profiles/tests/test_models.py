@@ -266,7 +266,7 @@ class InterfaceProfileAssignmentSignalTestCase(PluginModelTestCase):
             duplex="full",
             mtu=9000,
             mode=InterfaceModeChoices.MODE_ACCESS,
-            poe_mode="power-supply",
+            poe_mode="pse",
             untagged_vlan_vid=10,
             tagged_vlans_vids=[20],
         )
@@ -284,7 +284,7 @@ class InterfaceProfileAssignmentSignalTestCase(PluginModelTestCase):
         self.assertEqual(self.interface.duplex, "full")
         self.assertEqual(self.interface.mtu, 9000)
         self.assertEqual(self.interface.mode, InterfaceModeChoices.MODE_ACCESS)
-        self.assertEqual(self.interface.poe_mode, "power-supply")
+        self.assertEqual(self.interface.poe_mode, "pse")
         self.assertEqual(self.interface.untagged_vlan_id, self.untagged_vlan.pk)
         self.assertEqual(set(self.interface.tagged_vlans.values_list("pk", flat=True)), {self.tagged_vlan.pk})
 

@@ -7,6 +7,7 @@ from typing import NoReturn
 from core.exceptions import JobFailed
 from django.core.exceptions import ObjectDoesNotExist
 from netbox.jobs import JobRunner
+from utilities.exceptions import AbortRequest
 
 from .models import ProfileSync
 from .services import run_profile_sync
@@ -41,6 +42,8 @@ class SyncInterfaceProfileJob(JobRunner):
 
         try:
             changes = run_profile_sync(sync)
+        except AbortRequest as exc:
+            self._fail(exc.message, exc)
         except Exception as exc:
             self._fail(f"Synchronization failed and was rolled back: {exc}", exc)
 

@@ -17,7 +17,7 @@ from django.views import View
 from ipam.models import IPAddress
 from netbox.object_actions import BulkDelete, BulkEdit, BulkRename, DeleteObject, EditObject
 from netbox.views import generic
-from utilities.exceptions import PermissionsViolation
+from utilities.exceptions import AbortRequest, PermissionsViolation
 from utilities.views import ViewTab, register_model_view
 
 from .. import filtersets, forms, models, tables
@@ -182,6 +182,9 @@ class DeviceInterfaceProfileTabView(DeviceComponentsView):
                     ),
                 )
                 return redirect(return_url)
+            except AbortRequest as exc:
+                messages.error(request, _("{error} No changes were made.").format(error=exc.message))
+                return redirect(return_url)
             if created:
                 messages.success(
                     request, _("Assigned {profile} to {count} interface(s).").format(profile=profile, count=created)
@@ -339,6 +342,8 @@ class InterfaceProfileAssignmentSetHTMXView(View):
                     profile=profile, interface=interface
                 ),
             )
+        except AbortRequest as exc:
+            messages.error(request, exc.message)
         return HttpResponse(status=204, headers={"HX-Refresh": "true"})
 
 

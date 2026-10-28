@@ -8,10 +8,11 @@ from typing import Any, cast
 
 from dcim.models import Interface, Site, SiteGroup
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import FieldDoesNotExist
+from django.core.exceptions import NON_FIELD_ERRORS, FieldDoesNotExist, ValidationError
 from django.db import transaction
 from django.db.models import Case, Field, ForeignKey, IntegerField, ManyToManyField, Model, Q, Value, When
 from ipam.models import VLAN
+from utilities.exceptions import AbortRequest
 
 from ..models import InterfaceProfileAssignment, InterfaceTemplate, ProfileSync, ProfileSyncChange
 
@@ -90,8 +91,25 @@ def _build_diff(interface, template: InterfaceTemplate) -> dict[str, tuple[Any, 
     return changes
 
 
-def _apply_diff(interface, changes: dict[str, tuple[Any, Any]]) -> None:
-    """Apply a computed diff to the interface instance and related VLANs."""
+def _format_validation_error(error: ValidationError) -> str:
+    """Join the messages of a validation error, prefixing each with the label of its field."""
+    if not hasattr(error, "error_dict"):
+        return " ".join(error.messages)
+
+    parts = []
+    for name, messages in error.message_dict.items():
+        field = _get_interface_field(name)
+        text = " ".join(messages)
+        parts.append(text if name == NON_FIELD_ERRORS or field is None else f"{field.verbose_name}: {text}")
+    return "; ".join(parts)
+
+
+def _apply_diff(interface, changes: dict[str, tuple[Any, Any]], profile) -> None:
+    """Apply a computed diff to the interface instance and related VLANs.
+
+    Raises AbortRequest when the result is not a valid interface. NetBox views and the REST API show its
+    message to the user and roll back the request, including the assignment that triggered the sync.
+    """
     scalar_changed = False
 
     for field in SYNC_SCALAR_FIELDS:
@@ -106,7 +124,13 @@ def _apply_diff(interface, changes: dict[str, tuple[Any, Any]]) -> None:
         scalar_changed = True
 
     if scalar_changed:
-        interface.full_clean()
+        try:
+            interface.full_clean()
+        except ValidationError as exc:
+            raise AbortRequest(
+                f"Profile {profile} cannot be applied to {interface.device} {interface.name}: "
+                f"{_format_validation_error(exc)}"
+            ) from exc
         interface.save()
 
     if "tagged_vlans" in changes:
@@ -122,7 +146,7 @@ def sync_assignment(assignment: InterfaceProfileAssignment, commit: bool = True)
 
     changes = _build_diff(assignment.interface, template)
     if commit and changes:
-        _apply_diff(assignment.interface, changes)
+        _apply_diff(assignment.interface, changes, assignment.interface_profile)
 
     return changes
 
@@ -158,7 +182,7 @@ def run_profile_sync(sync: ProfileSync) -> list[ProfileSyncChange]:
                 continue
 
             prechange_data = interface.serialize_object()
-            _apply_diff(interface, diff)
+            _apply_diff(interface, diff, sync.interface_profile)
             change = ProfileSyncChange(
                 sync=sync,
                 interface=interface,
