@@ -2,8 +2,11 @@
 Test cases for netbox interface profiles views.
 """
 
+import re
+
 from dcim.choices import InterfaceTypeChoices
 from dcim.models import Device, DeviceRole, DeviceType, Interface, Manufacturer, Platform, Site, SiteGroup
+from django.test import Client
 from django.urls import reverse
 
 from ..models import (
@@ -534,6 +537,37 @@ class DeviceInterfaceProfileTabViewTestCase(PluginViewTestCase):
         self.assertHttpStatus(response, 200)
         self.assertContains(response, self.profile.name)
 
+    def test_htmx_menu_actions_carry_csrf_token(self):
+        """The menu is also rendered outside a form, so its actions must send the CSRF token themselves."""
+        self.add_permissions(
+            "dcim.view_interface",
+            "netbox_interface_profiles.view_interfaceprofileassignment",
+            "netbox_interface_profiles.change_interfaceprofileassignment",
+        )
+        new_profile = InterfaceProfile.objects.create(name="CSRF Profile", description="")
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(self.user)
+
+        response = client.get(
+            reverse(
+                "plugins:netbox_interface_profiles:interfaceprofileassignment_htmx_menu",
+                kwargs={"interface_id": self.interface.pk},
+            )
+        )
+        match = re.search(r'hx-headers=\'\{"X-CSRFToken": "([^"]+)"\}\'', response.content.decode())
+        self.assertIsNotNone(match)
+
+        url = reverse(
+            "plugins:netbox_interface_profiles:interfaceprofileassignment_htmx_set",
+            kwargs={"interface_id": self.interface.pk, "profile_id": new_profile.pk},
+        )
+        response = client.post(url, HTTP_X_CSRFTOKEN=match.group(1))
+
+        self.assertHttpStatus(response, 204)
+        self.assertEqual(
+            InterfaceProfileAssignment.objects.get(interface=self.interface).interface_profile, new_profile
+        )
+
     def test_htmx_set_endpoint_assigns_profile(self):
         # The interface already has an assignment, so this is a change
         self.add_permissions("dcim.view_interface", "netbox_interface_profiles.change_interfaceprofileassignment")
@@ -655,6 +689,69 @@ class InterfaceDetailCardTestCase(PluginViewTestCase):
         self.assertContains(response, self.config_template.name)
         self.assertContains(response, "interface eth0")
         self.assertContains(response, f"description {self.profile.name}")
+
+    def test_interface_detail_card_offers_change_for_assigned_interface(self):
+        self.add_permissions(
+            "dcim.view_interface",
+            "netbox_interface_profiles.view_interfaceprofileassignment",
+            "netbox_interface_profiles.change_interfaceprofileassignment",
+        )
+
+        response = self.client.get(reverse("dcim:interface", kwargs={"pk": self.interface.pk}))
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, "Change")
+        self.assertContains(
+            response,
+            reverse(
+                "plugins:netbox_interface_profiles:interfaceprofileassignment_htmx_menu",
+                kwargs={"interface_id": self.interface.pk},
+            ),
+        )
+
+    def test_interface_detail_card_offers_assign_for_unassigned_interface(self):
+        interface = Interface.objects.create(
+            device=self.device,
+            name="eth1",
+            type=InterfaceTypeChoices.TYPE_1GE_FIXED,
+        )
+        self.add_permissions(
+            "dcim.view_interface",
+            "netbox_interface_profiles.view_interfaceprofileassignment",
+            "netbox_interface_profiles.add_interfaceprofileassignment",
+        )
+
+        response = self.client.get(reverse("dcim:interface", kwargs={"pk": interface.pk}))
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, "No interface profile assigned")
+        self.assertContains(
+            response,
+            reverse(
+                "plugins:netbox_interface_profiles:interfaceprofileassignment_htmx_menu",
+                kwargs={"interface_id": interface.pk},
+            ),
+        )
+
+    def test_interface_detail_card_hides_assign_without_add_permission(self):
+        interface = Interface.objects.create(
+            device=self.device,
+            name="eth1",
+            type=InterfaceTypeChoices.TYPE_1GE_FIXED,
+        )
+        self.add_permissions("dcim.view_interface")
+
+        response = self.client.get(reverse("dcim:interface", kwargs={"pk": interface.pk}))
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, "No interface profile assigned")
+        self.assertNotContains(
+            response,
+            reverse(
+                "plugins:netbox_interface_profiles:interfaceprofileassignment_htmx_menu",
+                kwargs={"interface_id": interface.pk},
+            ),
+        )
 
 
 class InterfaceProfileSyncViewTestCase(PluginViewTestCase):

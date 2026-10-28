@@ -1,5 +1,7 @@
 {% load i18n %}
 
+{# Send the CSRF token explicitly, as this menu is not always rendered inside a form #}
+
 {% for profile in profiles %}
   <li>
     <button
@@ -7,6 +9,7 @@
       class="dropdown-item{% if current_profile and current_profile.pk == profile.pk %} active{% endif %}"
       hx-post="{% url 'plugins:netbox_interface_profiles:interfaceprofileassignment_htmx_set' interface_id=interface.pk profile_id=profile.pk %}"
       hx-swap="none"
+      hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
       {% if profile.pk not in assignable_profile_ids %}disabled title="{% trans "You are not permitted to assign this profile" %}"{% endif %}
     >
       {% if current_profile and current_profile.pk == profile.pk %}<i class="mdi mdi-check"></i>{% endif %}
@@ -25,6 +28,7 @@
       class="dropdown-item text-danger"
       hx-post="{% url 'plugins:netbox_interface_profiles:interfaceprofileassignment_htmx_remove' interface_id=interface.pk %}"
       hx-swap="none"
+      hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
     >
       <i class="mdi mdi-close-circle-outline"></i> {% trans "Clear Assignment" %}
     </button>
