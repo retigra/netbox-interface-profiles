@@ -6,7 +6,7 @@ from jinja2 import pass_context
 
 
 @pass_context
-def interface_render(context, interface, **extra_context):
+def interface_config_render(context, interface, **extra_context):
     """
     Render the config template applicable to an interface, or an empty string when none applies.
 
@@ -22,6 +22,19 @@ def interface_render(context, interface, **extra_context):
     return template.render({**context.get_all(), **extra_context, "interface": interface})
 
 
+@pass_context
+def interface_role_get(context, interface, **extra_context):
+    """
+    Get the matching interface profile for an interface
+    """
+    from .models import ProfileConfigTemplate
+
+    template = ProfileConfigTemplate.objects.for_interface(interface).first()
+
+    return template.interface_role if template else None
+
+
 context = {
-    "interface_render": interface_render,
+    "interface_config_render": interface_config_render,
+    "interface_role_get": interface_role_get,
 }

@@ -86,16 +86,23 @@ When multiple config templates apply, the one with the highest **weight** is use
 `ProfileConfigTemplate.objects.for_interface(interface)` returns the applicable templates, highest weight first.
 
 NetBox config templates (and any other template rendered by NetBox) can render the interface configuration with
-`interface_render(interface)`. It renders the applicable template with the highest weight, or returns an empty string
-when none applies. The interface template receives the context of the calling template, such as `device` and the
-device's config context, plus `interface` and any keyword arguments passed to `interface_render`:
+`interface_config_render(interface)`. It renders the applicable template with the highest weight, or returns an empty
+string when none applies. The interface template receives the context of the calling template, such as `device` and
+the device's config context, plus `interface` and any keyword arguments passed to `interface_config_render`.
+
+`interface_role_get(interface)` returns the interface role of the applicable config template with the highest weight,
+or `None` when none applies:
 
 ```jinja
 hostname {{ device.name }}
 
 {% for interface in device.interfaces.all() %}
+{% set role = interface_role_get(interface) %}
 interface {{ interface.name }}
-  {{ interface_render(interface) | indent(2) }}
+{% if role %}
+  description {{ role.name }}
+{% endif %}
+  {{ interface_config_render(interface) | indent(2) }}
 {% endfor %}
 ```
 
