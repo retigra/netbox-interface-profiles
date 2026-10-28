@@ -85,6 +85,20 @@ A config template applies to an interface when:
 When multiple config templates apply, the one with the highest **weight** is used.
 `ProfileConfigTemplate.objects.for_interface(interface)` returns the applicable templates, highest weight first.
 
+NetBox config templates (and any other template rendered by NetBox) can render the interface configuration with
+`interface_render(interface)`. It renders the applicable template with the highest weight, or returns an empty string
+when none applies. The interface template receives the context of the calling template, such as `device` and the
+device's config context, plus `interface` and any keyword arguments passed to `interface_render`:
+
+```jinja
+hostname {{ device.name }}
+
+{% for interface in device.interfaces.all() %}
+interface {{ interface.name }}
+  {{ interface_render(interface) | indent(2) }}
+{% endfor %}
+```
+
 ## Permissions
 
 Assigning a role reconfigures the interface, so who may assign which role is controlled with regular NetBox

@@ -36,5 +36,11 @@ class NetBoxInterfaceProfilesConfig(PluginConfig):
         # Importing connects Django signal receivers.
         from . import signals  # noqa: F401
 
+    def get_jinja_context(self) -> dict:
+        """Expose the interface rendering helpers to config templates."""
+        from .jinja_env import context
+
+        return context
+
 
 config = NetBoxInterfaceProfilesConfig
