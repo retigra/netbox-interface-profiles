@@ -626,7 +626,7 @@ class InterfaceProfileSyncViewTestCase(PluginViewTestCase):
             self.assertHttpStatus(response, 403)
 
     def test_sync_view_queues_job(self):
-        self.add_permissions("dcim.change_interface")
+        self.add_permissions("dcim.change_interface", "netbox_interface_profiles.view_profilesync")
 
         url = reverse(
             "plugins:netbox_interface_profiles:interfaceprofile_sync",

@@ -59,6 +59,13 @@ from .profile_group import (
     ProfileGroupListView,
     ProfileGroupView,
 )
+from .profile_sync import (
+    InterfaceProfileSyncsTabView,
+    ProfileSyncBulkDeleteView,
+    ProfileSyncDeleteView,
+    ProfileSyncListView,
+    ProfileSyncView,
+)
 
 __all__ = (
     "DeviceInterfaceProfileTabView",
@@ -80,6 +87,7 @@ __all__ = (
     "InterfaceProfileInterfacesTabView",
     "InterfaceProfileListView",
     "InterfaceProfileSyncView",
+    "InterfaceProfileSyncsTabView",
     "InterfaceProfileView",
     "InterfaceTemplateBulkDeleteView",
     "InterfaceTemplateBulkEditView",
@@ -102,4 +110,8 @@ __all__ = (
     "ProfileGroupEditView",
     "ProfileGroupListView",
     "ProfileGroupView",
+    "ProfileSyncBulkDeleteView",
+    "ProfileSyncDeleteView",
+    "ProfileSyncListView",
+    "ProfileSyncView",
 )

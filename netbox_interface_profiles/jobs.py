@@ -2,70 +2,48 @@
 
 from __future__ import annotations
 
+from typing import NoReturn
+
 from core.exceptions import JobFailed
+from django.core.exceptions import ObjectDoesNotExist
 from netbox.jobs import JobRunner
 
-from .models import InterfaceProfile
-from .services import format_diff_value, sync_assignments_for_profile
+from .models import ProfileSync
+from .services import run_profile_sync
 
 
 class SyncInterfaceProfileJob(JobRunner):
-    """Synchronize all interfaces assigned to an interface profile."""
+    """Synchronize all interfaces assigned to an interface profile.
+
+    The job runs for a ProfileSync created alongside it; the changed interfaces are recorded on
+    that ProfileSync and shown on its detail page.
+    """
 
     class Meta:
         name = "Synchronize Interface Profile"
 
-    @staticmethod
-    def _build_ascii_table(rows: list[dict[str, object]]) -> list[str]:
-        """Render change rows as a plain text table for job logs."""
+    def _fail(self, message: str, exc: Exception) -> NoReturn:
+        """Fail the job, keeping the reason on the job so the synchronization page can show it."""
+        self.logger.error(message)
+        self.job.error = message
+        raise JobFailed(message) from exc
 
-        headers = ("Interface", "Attribute", "Old Value", "New Value")
-        table_rows = [
-            (
-                str(row["interface"]),
-                str(row["field"]),
-                format_diff_value(row["old"]),
-                format_diff_value(row["new"]),
-            )
-            for row in rows
-        ]
+    def run(self, *args, **kwargs) -> None:
+        """Synchronize assignments for the related profile and record the changes."""
+        try:
+            sync = ProfileSync.objects.select_related("interface_profile").get(job=self.job)
+        except ObjectDoesNotExist as exc:
+            self._fail("No profile synchronization is linked to this job.", exc)
 
-        widths = [len(header) for header in headers]
-        for values in table_rows:
-            for i, value in enumerate(values):
-                widths[i] = max(widths[i], len(value))
-
-        def render_row(values: tuple[str, str, str, str]) -> str:
-            return "| " + " | ".join(value.ljust(widths[i]) for i, value in enumerate(values)) + " |"
-
-        separator = "+-" + "-+-".join("-" * width for width in widths) + "-+"
-        lines = [separator, render_row(headers), separator]
-        lines.extend(render_row(values) for values in table_rows)
-        lines.append(separator)
-        return lines
-
-    def run(self, dry_run: bool = True, profile_id: int | None = None, *args, **kwargs) -> None:
-        """Synchronize assignments for the related profile and log diffs."""
-        if profile_id is None:
-            raise JobFailed("No interface profile ID was provided for this job run.")
-
-        profile = InterfaceProfile.objects.get(pk=profile_id)
-        self.logger.info(f"Starting interface profile synchronization for {profile} (dry_run={dry_run})")
+        self.logger.info(
+            f"Starting interface profile synchronization for {sync.interface_profile} (dry_run={sync.dry_run})"
+        )
 
         try:
-            rows = sync_assignments_for_profile(profile=profile, dry_run=dry_run)
+            changes = run_profile_sync(sync)
         except Exception as exc:
-            raise JobFailed(f"Synchronization failed and was rolled back: {exc}") from exc
+            self._fail(f"Synchronization failed and was rolled back: {exc}", exc)
 
-        if not rows:
-            self.logger.info("No interface attribute changes were required.")
-            return
-
-        self.logger.info(f"Detected {len(rows)} changed field value(s).")
-        for line in self._build_ascii_table(rows):
-            self.logger.info(line)
-
-        if dry_run:
-            self.logger.info("Dry-run complete. All computed changes were rolled back.")
-        else:
-            self.logger.info("Synchronization complete. Changes were committed.")
+        verb = "would change" if sync.dry_run else "changed"
+        self.logger.info(f"Synchronization {verb} {len(changes)} of {sync.interface_count} interface(s).")
+        self.logger.info(f"Review the changes at {sync.get_absolute_url()}")

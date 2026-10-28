@@ -112,5 +112,5 @@ class InterfaceProfileSyncForm(forms.Form):
         required=False,
         initial=True,
         label=_("Dry run"),
-        help_text=_("Compute and log diffs without committing interface changes to the database."),
+        help_text=_("Only show the changes that would be made, without saving them. They can be applied afterwards."),
     )

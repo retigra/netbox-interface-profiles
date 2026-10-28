@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
+from collections.abc import Iterable
 from typing import Any, cast
 
-from dcim.models import Site, SiteGroup
+from dcim.models import Interface, Site, SiteGroup
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import FieldDoesNotExist
 from django.db import transaction
-from django.db.models import Case, IntegerField, Q, Value, When
+from django.db.models import Case, Field, ForeignKey, IntegerField, ManyToManyField, Model, Q, Value, When
 from ipam.models import VLAN
 
-from ..models import InterfaceProfile, InterfaceProfileAssignment, InterfaceTemplate
+from ..models import InterfaceProfileAssignment, InterfaceTemplate, ProfileSync, ProfileSyncChange
 
 SYNC_SCALAR_FIELDS = (
     "enabled",
@@ -103,6 +106,7 @@ def _apply_diff(interface, changes: dict[str, tuple[Any, Any]]) -> None:
         scalar_changed = True
 
     if scalar_changed:
+        interface.full_clean()
         interface.save()
 
     if "tagged_vlans" in changes:
@@ -123,57 +127,114 @@ def sync_assignment(assignment: InterfaceProfileAssignment, commit: bool = True)
     return changes
 
 
-def sync_assignments_for_profile(
-    profile: InterfaceProfile,
-    dry_run: bool,
-) -> list[dict[str, Any]]:
-    """Synchronize all assignments for a profile and return per-field diff rows."""
+def run_profile_sync(sync: ProfileSync) -> list[ProfileSyncChange]:
+    """Synchronize all assignments of a profile and record every interface that changed.
+
+    Each change stores the serialized interface before and after synchronization, like NetBox's
+    changelog does. A dry run applies the changes inside a transaction that is rolled back, so the
+    recorded post-change data is exactly what a committed run would have saved.
+    """
     assignments = (
         InterfaceProfileAssignment.objects.select_related(
             "interface__device__site",
             "interface_profile",
         )
         .prefetch_related("interface__tagged_vlans")
-        .filter(interface_profile=profile)
+        .filter(interface_profile=sync.interface_profile)
         .order_by("interface__device__name", "interface__name", "pk")
     )
 
-    rows: list[dict[str, Any]] = []
+    changes: list[ProfileSyncChange] = []
 
     with transaction.atomic():
         for assignment in assignments:
-            changes = sync_assignment(assignment=assignment, commit=True)
-            interface = assignment.interface
-            for field, (old_value, new_value) in changes.items():
-                rows.append(
-                    {
-                        "interface": interface,
-                        "field": field,
-                        "old": old_value,
-                        "new": new_value,
-                    }
-                )
+            template = _get_matching_template(assignment)
+            if template is None:
+                continue
 
-        if dry_run:
+            interface = assignment.interface
+            diff = _build_diff(interface, template)
+            if not diff:
+                continue
+
+            prechange_data = interface.serialize_object()
+            _apply_diff(interface, diff)
+            change = ProfileSyncChange(
+                sync=sync,
+                interface=interface,
+                device_name=str(interface.device),
+                interface_name=interface.name,
+                prechange_data=prechange_data,
+                postchange_data=interface.serialize_object(),
+            )
+            if change.diff():
+                changes.append(change)
+
+        if sync.dry_run:
             transaction.set_rollback(True)
 
+    sync.interface_count = len(assignments)
+    sync.save(update_fields=["interface_count"])
+
+    return ProfileSyncChange.objects.bulk_create(changes)
+
+
+def _get_interface_field(name: str) -> Field | None:
+    try:
+        return cast(Any, Interface)._meta.get_field(name)
+    except FieldDoesNotExist:
+        return None
+
+
+def describe_changes(changes: Iterable[ProfileSyncChange]) -> list[dict[str, Any]]:
+    """Resolve recorded interface snapshots into display rows, one per interface.
+
+    Serialized data holds raw values (choice keys, related primary keys), so these are resolved
+    to choice labels and related objects. Objects that no longer exist are shown by primary key.
+    """
+    diffs = [(change, change.diff()) for change in changes]
+
+    # Collect related primary keys first, so each related model is queried only once
+    related_pks: dict[type[Model], set[int]] = defaultdict(set)
+    for _, diff in diffs:
+        for name, values in diff.items():
+            field = _get_interface_field(name)
+            if isinstance(field, ForeignKey | ManyToManyField):
+                for value in values:
+                    related_pks[field.related_model].update(value if isinstance(value, list) else [value])
+    related = {
+        model: cast(Any, model).objects.in_bulk([pk for pk in pks if pk is not None])
+        for model, pks in related_pks.items()
+    }
+
+    def resolve(field: Field | None, value: Any) -> Any:
+        if value is None or field is None:
+            return value
+        if isinstance(field, ForeignKey | ManyToManyField):
+            objects = related[field.related_model]
+
+            def get_object(pk):
+                return objects.get(pk, f"#{pk} (deleted)")
+
+            if isinstance(value, list):
+                return sorted((get_object(pk) for pk in value), key=lambda obj: (getattr(obj, "vid", 0), str(obj)))
+            return get_object(value)
+        if field.choices:
+            return dict(field.flatchoices).get(value, value)
+        return value
+
+    rows = []
+    for change, diff in diffs:
+        attributes = []
+        for name, (old, new) in diff.items():
+            field = _get_interface_field(name)
+            attributes.append(
+                {
+                    "label": field.verbose_name if field else name,
+                    "old": resolve(field, old),
+                    "new": resolve(field, new),
+                }
+            )
+        rows.append({"change": change, "attributes": attributes})
+
     return rows
-
-
-def format_diff_value(value: Any) -> str:
-    """Format a changed value for display in job output."""
-    if value is None:
-        return "-"
-
-    if isinstance(value, bool):
-        return "true" if value else "false"
-
-    if isinstance(value, list):
-        if not value:
-            return "-"
-        return ", ".join(format_diff_value(item) for item in value)
-
-    if isinstance(value, VLAN):
-        return f"{value.vid} ({value.name})"
-
-    return str(value)

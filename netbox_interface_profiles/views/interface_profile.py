@@ -3,6 +3,7 @@ InterfaceProfile views for netbox interface profiles.
 """
 
 from django.contrib import messages
+from django.db import transaction
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import gettext_lazy as _
@@ -13,6 +14,7 @@ from utilities.views import ViewTab, register_model_view
 
 from .. import filtersets, forms, models, tables
 from ..jobs import SyncInterfaceProfileJob
+from .profile_sync import SYNC_PERMISSIONS
 
 
 class InterfaceProfileView(generic.ObjectView):
@@ -83,7 +85,7 @@ class InterfaceProfileSyncView(View):
     """Queue a background job to synchronize all interfaces assigned to a profile."""
 
     def _has_permission(self, request) -> bool:
-        return request.user.has_perm("dcim.change_interface")
+        return request.user.has_perms(SYNC_PERMISSIONS)
 
     def get(self, request, pk: int):
         if not self._has_permission(request):
@@ -117,20 +119,16 @@ class InterfaceProfileSyncView(View):
             )
 
         dry_run = form.cleaned_data.get("dry_run", True)
-        job = SyncInterfaceProfileJob.enqueue(
-            user=request.user,
-            dry_run=dry_run,
-            profile_id=profile.pk,
-        )
 
-        mode = _("dry-run") if dry_run else _("commit")
-        messages.success(
-            request,
-            _("Queued synchronization job #{id} for profile {profile} ({mode}).").format(
-                id=job.pk,
-                profile=profile,
-                mode=mode,
-            ),
-        )
+        # Create the job and its sync record together, so the worker never picks up a job without one
+        with transaction.atomic():
+            job = SyncInterfaceProfileJob.enqueue(instance=profile, user=request.user)
+            sync = models.ProfileSync.objects.create(interface_profile=profile, job=job, dry_run=dry_run)
 
-        return redirect(job.get_absolute_url())
+        if dry_run:
+            message = _("Started a dry run for profile {profile}. No interfaces will be changed.")
+        else:
+            message = _("Started synchronizing profile {profile}.")
+        messages.success(request, message.format(profile=profile))
+
+        return redirect(sync.get_absolute_url())

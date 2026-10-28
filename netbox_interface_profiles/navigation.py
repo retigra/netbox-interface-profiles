@@ -34,6 +34,11 @@ profiles = (
     _menu_item("profilegroup", "Profile Groups"),
     _menu_item("interfaceprofile", "Interface Profiles"),
     _menu_item("interfaceprofileassignment", "Assignments"),
+    PluginMenuItem(
+        link="plugins:netbox_interface_profiles:profilesync_list",
+        link_text="Synchronizations",
+        permissions=["netbox_interface_profiles.view_profilesync"],
+    ),
 )
 
 # Interface templates belong to a profile, config templates to an interface template

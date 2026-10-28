@@ -13,6 +13,7 @@ from .interface_profile_assignment import InterfaceProfileAssignment
 from .interface_template import InterfaceTemplate
 from .profile_config_template import ProfileConfigTemplate
 from .profile_group import ProfileGroup
+from .profile_sync import ProfileSync, ProfileSyncChange
 
 __all__ = (
     "InterfaceProfile",
@@ -20,4 +21,6 @@ __all__ = (
     "InterfaceTemplate",
     "ProfileConfigTemplate",
     "ProfileGroup",
+    "ProfileSync",
+    "ProfileSyncChange",
 )

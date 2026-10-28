@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/stable/topics/http/urls/
 """
 
 from django.urls import path
-from netbox.views.generic import ObjectChangeLogView, ObjectJournalView
+from netbox.views.generic import ObjectChangeLogView, ObjectJobsView, ObjectJournalView
 
 from . import models, views
 
@@ -65,6 +65,11 @@ urlpatterns = (
         name="interfaceprofile_sync",
     ),
     path(
+        "interface-profiles/<int:pk>/syncs/",
+        views.InterfaceProfileSyncsTabView.as_view(),
+        name="interfaceprofile_syncs",
+    ),
+    path(
         "interface-profiles/<int:pk>/edit/",
         views.InterfaceProfileEditView.as_view(),
         name="interfaceprofile_edit",
@@ -86,6 +91,17 @@ urlpatterns = (
         name="interfaceprofile_journal",
         kwargs={"model": models.InterfaceProfile},
     ),
+    path(
+        "interface-profiles/<int:pk>/jobs/",
+        ObjectJobsView.as_view(),
+        name="interfaceprofile_jobs",
+        kwargs={"model": models.InterfaceProfile},
+    ),
+    # Profile Synchronizations
+    path("profile-syncs/", views.ProfileSyncListView.as_view(), name="profilesync_list"),
+    path("profile-syncs/delete/", views.ProfileSyncBulkDeleteView.as_view(), name="profilesync_bulk_delete"),
+    path("profile-syncs/<int:pk>/", views.ProfileSyncView.as_view(), name="profilesync"),
+    path("profile-syncs/<int:pk>/delete/", views.ProfileSyncDeleteView.as_view(), name="profilesync_delete"),
     # Interface Templates
     path("interface-templates/", views.InterfaceTemplateListView.as_view(), name="interfacetemplate_list"),
     path("interface-templates/add/", views.InterfaceTemplateEditView.as_view(), name="interfacetemplate_add"),
