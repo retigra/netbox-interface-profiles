@@ -10,7 +10,7 @@ export default defineConfig({
 	trailingSlash: 'always',
 	integrations: [
 		starlight({
-			title: 'NetBox Interface Profiles',
+			title: 'Interface Profiles',
 			description: 'Assign roles to NetBox interfaces and keep their configuration in sync.',
 			favicon: '/favicon.svg',
 			logo: { src: './src/assets/logo.svg' },

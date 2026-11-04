@@ -1,0 +1,111 @@
+{% load i18n %}
+
+<div class="card mb-3">
+  <h2 class="card-header">
+    {% trans "Interface Role Automation" %}
+    {% if role %}
+      {% if perms.interface_profiles.change_interfaceroleassignment or perms.interface_profiles.delete_interfaceroleassignment %}
+        <div class="card-actions">
+          <div class="dropdown">
+            <button
+              type="button"
+              class="btn btn-ghost-primary btn-sm dropdown-toggle"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+              hx-get="{% url 'plugins:interface_profiles:interfaceroleassignment_htmx_menu' interface_id=interface.pk %}"
+              hx-target="#interface-role-card-menu"
+              hx-swap="innerHTML"
+            >
+              <i class="mdi mdi-pencil" aria-hidden="true"></i> {% trans "Change" %}
+            </button>
+            <ul id="interface-role-card-menu" class="dropdown-menu dropdown-menu-end">
+              <li><span class="dropdown-item-text text-muted">{% trans "Loading roles..." %}</span></li>
+            </ul>
+          </div>
+        </div>
+      {% endif %}
+    {% endif %}
+  </h2>
+  {% if role %}
+    <table class="table table-hover attr-table">
+      <tr>
+        <th scope="row">Assigned Role</th>
+        <td>
+          <a href="{{ role.get_absolute_url }}">{{ role }}</a>
+        </td>
+      </tr>
+      <tr>
+        <th scope="row">Role Group</th>
+        <td>{{ role.group|linkify|placeholder }}</td>
+      </tr>
+      <tr>
+        <th scope="row">Matching Interface Templates</th>
+        <td>
+          {% if matching_interface_templates %}
+            {% for template in matching_interface_templates %}
+              <div class="mb-1">
+                <a href="{{ template.get_absolute_url }}">{{ template.name }}</a>
+                {% if template.scope %}
+                  <span class="text-muted">({{ template.scope_type.name }}: {{ template.scope }})</span>
+                {% else %}
+                  <span class="text-muted">(global)</span>
+                {% endif %}
+              </div>
+            {% endfor %}
+          {% else %}
+            <span class="text-muted">No matching interface templates found.</span>
+          {% endif %}
+        </td>
+      </tr>
+
+      <tr>
+        <th scope="row">Matching Config Templates</th>
+        <td>
+          {% if matching_config_templates %}
+            {% for template in matching_config_templates %}
+              <div class="mb-1">
+                <a href="{{ template.get_absolute_url }}">{{ template.name }}</a>
+                <span class="text-muted">(weight {{ template.weight }})</span>
+              </div>
+            {% endfor %}
+          {% else %}
+            <span class="text-muted">No matching config templates found.</span>
+          {% endif %}
+        </td>
+      </tr>
+
+      <tr>
+        <th scope="row">Assigned Config Preview</th>
+        <td>
+          {% if assigned_config_template %}
+            <pre class="mb-0"><code>{{ assigned_config_preview }}</code></pre>
+          {% else %}
+            <span class="text-muted">No config template assigned.</span>
+          {% endif %}
+        </td>
+      </tr>
+    </table>
+  {% else %}
+    <div class="card-body text-muted">
+      {% trans "No interface role assigned" %}
+      {% if perms.interface_profiles.add_interfaceroleassignment %}
+        <div class="dropdown float-end">
+          <button
+            type="button"
+            class="btn btn-primary dropdown-toggle"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+            hx-get="{% url 'plugins:interface_profiles:interfaceroleassignment_htmx_menu' interface_id=interface.pk %}"
+            hx-target="#interface-role-card-menu"
+            hx-swap="innerHTML"
+          >
+            <i class="mdi mdi-card-account-details-outline" aria-hidden="true"></i> {% trans "Assign" %}
+          </button>
+          <ul id="interface-role-card-menu" class="dropdown-menu dropdown-menu-end">
+            <li><span class="dropdown-item-text text-muted">{% trans "Loading roles..." %}</span></li>
+          </ul>
+        </div>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>

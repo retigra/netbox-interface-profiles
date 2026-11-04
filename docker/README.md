@@ -1,6 +1,6 @@
 # Docker Development Environment
 
-This directory contains a Docker Compose setup that provides a full NetBox development environment with the `netbox-interface-profiles` plugin installed and configured for hot reloading.
+This directory contains a Docker Compose setup that provides a full NetBox development environment with the `interface-profiles` plugin installed and configured for hot reloading.
 
 ## Services
 
@@ -26,7 +26,7 @@ A superuser is created automatically on first boot. Check the NetBox Docker docu
 
 ## Hot reloading
 
-The plugin is installed in **editable mode** (`uv pip install -e /opt/netbox-interface-profiles`) on every container start. The entire repository root is bind-mounted into the container at `/opt/netbox-interface-profiles`, so any change to the plugin's Python source is immediately reflected without rebuilding the image.
+The plugin is installed in **editable mode** (`uv pip install -e /opt/interface-profiles`) on every container start. The entire repository root is bind-mounted into the container at `/opt/interface-profiles`, so any change to the plugin's Python source is immediately reflected without rebuilding the image.
 
 NetBox runs via Django's development server (`manage.py runserver`) instead of gunicorn, which means it automatically reloads when Python files change. `DEBUG=true` and `DEVELOPER=true` are set in the environment.
 
@@ -37,7 +37,7 @@ Migrations are applied automatically on startup (including after plugin updates)
 **Create migrations** after changing models:
 
 ```bash
-docker compose exec -it netbox ./manage.py makemigrations netbox_interface_profiles
+docker compose exec -it netbox ./manage.py makemigrations interface_profiles
 ```
 
 **Apply pending migrations:**
@@ -54,7 +54,7 @@ The plugin is enabled via the `PLUGINS` list in `configuration.py`:
 
 ```python
 PLUGINS = [
-    "netbox_interface_profiles",
+    "interface_profiles",
 ]
 ```
 

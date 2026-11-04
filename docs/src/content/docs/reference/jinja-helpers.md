@@ -44,7 +44,7 @@ An interface whose role has no applicable config template returns `None`. Use
 The same matching is available in Python, for example in custom scripts:
 
 ```python
-from netbox_interface_profiles.models import ProfileConfigTemplate
+from interface_profiles.models import ProfileConfigTemplate
 
 # Applicable config templates, highest weight first
 templates = ProfileConfigTemplate.objects.for_interface(interface)

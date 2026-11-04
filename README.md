@@ -1,4 +1,4 @@
-# netbox-interface-profiles
+# interface-profiles
 
 NetBox plugin for managing interface configuration profiles.
 
@@ -62,7 +62,7 @@ Enable the plugin in your NetBox `configuration.py`:
 
 ```python
 PLUGINS = [
-    'netbox_interface_profiles'
+    'interface_profiles'
 ]
 ```
 
@@ -93,7 +93,7 @@ parameters can be added to `PLUGINS_CONFIG` in your NetBox configuration file:
 
 ```python
 PLUGINS_CONFIG = {
-    "netbox_interface_profiles": {},
+    "interface_profiles": {},
 }
 ```
 

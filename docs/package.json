@@ -1,5 +1,5 @@
 {
-  "name": "netbox-interface-profiles-docs",
+  "name": "interface-profiles-docs",
   "private": true,
   "type": "module",
   "scripts": {

@@ -43,7 +43,7 @@ Add the plugin to `PLUGINS` in `configuration.py`:
 
 ```python title="configuration.py"
 PLUGINS = [
-    "netbox_interface_profiles",
+    "interface_profiles",
 ]
 ```
 
@@ -51,7 +51,7 @@ The plugin has no required settings. An empty entry in `PLUGINS_CONFIG` is enoug
 
 ```python title="configuration.py"
 PLUGINS_CONFIG = {
-    "netbox_interface_profiles": {},
+    "interface_profiles": {},
 }
 ```
 

@@ -21,7 +21,7 @@ jobs:
         uses: astral-sh/setup-uv@v5
 
       - name: Run Ruff
-        run: uvx ruff@0.14.14 check netbox_interface_profiles/
+        run: uvx ruff@0.14.14 check interface_profiles/
 
   test:
     name: Test (Python ${{ matrix.python-version }})
@@ -112,7 +112,7 @@ jobs:
           REDIS_HOST: localhost
           REDIS_PORT: 6379
         run: |
-          python manage.py makemigrations --check netbox_interface_profiles
+          python manage.py makemigrations --check interface_profiles
 
       - name: Collect static files
         working-directory: netbox/netbox
@@ -138,4 +138,4 @@ jobs:
           REDIS_HOST: localhost
           REDIS_PORT: 6379
         run: |
-          python manage.py test netbox_interface_profiles.tests --parallel --keepdb -v 2
+          python manage.py test interface_profiles.tests --parallel --keepdb -v 2

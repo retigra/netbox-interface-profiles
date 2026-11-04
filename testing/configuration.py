@@ -5,7 +5,7 @@ This configuration is used when running tests and should not be used in producti
 
 Usage:
     export NETBOX_CONFIGURATION=testing.configuration
-    python manage.py test netbox_interface_profiles.tests
+    python manage.py test interface_profiles.tests
 """
 
 import os
@@ -56,11 +56,11 @@ DEVELOPER = True
 
 # Plugin configuration
 PLUGINS = [
-    "netbox_interface_profiles",
+    "interface_profiles",
 ]
 
 PLUGINS_CONFIG = {
-    "netbox_interface_profiles": {
+    "interface_profiles": {
         # Add any plugin configuration needed for testing
     },
 }
@@ -87,7 +87,7 @@ LOGGING = {
             "level": os.getenv("DJANGO_LOG_LEVEL", "INFO"),
             "propagate": False,
         },
-        "netbox_interface_profiles": {
+        "interface_profiles": {
             "handlers": ["console"],
             "level": "DEBUG",
         },

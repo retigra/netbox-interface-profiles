@@ -45,9 +45,9 @@ The device tab and the role menu only offer the roles the user may assign.
 
 | Task                                   | Required permissions                                                         |
 | -------------------------------------- | ---------------------------------------------------------------------------- |
-| See the device **Interface Roles** tab | `netbox_interface_profiles.view_interfaceroleassignment`                     |
-| Synchronize a role                     | `dcim.change_interface`, `netbox_interface_profiles.view_rolesync`           |
-| View synchronizations                  | `netbox_interface_profiles.view_rolesync`                                    |
-| Sync a config template from its data file | `netbox_interface_profiles.sync_profileconfigtemplate`                    |
+| See the device **Interface Roles** tab | `interface_profiles.view_interfaceroleassignment`                     |
+| Synchronize a role                     | `dcim.change_interface`, `interface_profiles.view_rolesync`           |
+| View synchronizations                  | `interface_profiles.view_rolesync`                                    |
+| Sync a config template from its data file | `interface_profiles.sync_profileconfigtemplate`                    |
 
 Managing roles, groups and templates uses the standard add, change and delete permissions of each object type.

@@ -1,4 +1,4 @@
-sources = netbox_interface_profiles
+sources = interface_profiles
 
 .PHONY: test format lint unittest pre-commit docs docs-build clean
 test: format lint unittest

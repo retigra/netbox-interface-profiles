@@ -6,7 +6,7 @@ requires = ["setuptools>=77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "netbox-interface-profiles"
+name = "interface-profiles"
 version = "0.1.0"
 authors = [{ name = "Wouter de Bruijn", email = "wouter@hedium.nl" }]
 description = "NetBox plugin for managing interface configuration profiles."
@@ -64,10 +64,10 @@ ignore = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["netbox_interface_profiles*"]
+include = ["interface_profiles*"]
 
 [tool.setuptools.package-data]
-netbox_interface_profiles = ["templates/**", "static/**", "locale/**/*.mo"]
+interface_profiles = ["templates/**", "static/**", "locale/**/*.mo"]
 
 [dependency-groups]
 dev = [
@@ -78,4 +78,4 @@ dev = [
 test = ["bs4>=0.0.2"]
 
 [tool.ty.src]
-exclude = ["build/**", "docker/**", "docs/netbox/**", "netbox_interface_profiles/testing/**"]
+exclude = ["build/**", "docker/**", "docs/netbox/**", "interface_profiles/testing/**"]

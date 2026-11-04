@@ -1,1 +1,1 @@
-"""Unit test package for netbox_interface_profiles."""
+"""Unit test package for interface_profiles."""

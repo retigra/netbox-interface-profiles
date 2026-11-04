@@ -11,9 +11,9 @@ umask 002
 # shellcheck disable=SC1091
 source /opt/netbox/venv/bin/activate
 
-# Install netbox-interface-profiles plugin in editable mode
-echo "⚙️ Installing netbox-interface-profiles plugin"
-/usr/local/bin/uv pip install -e /opt/netbox-interface-profiles
+# Install interface-profiles plugin in editable mode
+echo "⚙️ Installing interface-profiles plugin"
+/usr/local/bin/uv pip install -e /opt/interface-profiles
 
 # Try to connect to the DB
 DB_WAIT_TIMEOUT=${DB_WAIT_TIMEOUT-3}

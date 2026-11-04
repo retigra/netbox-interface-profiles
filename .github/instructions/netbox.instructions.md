@@ -356,13 +356,13 @@ class Query(graphene.ObjectType):
    * The plugin can only be validated inside the full NetBox environment provided by the Docker Compose setup in `docker/`. Use `docker compose exec` to run any `manage.py` commands:
      ```bash
      # Generate migrations
-     docker compose -f docker/docker-compose.yml exec -it netbox ./manage.py makemigrations netbox_interface_profiles
+     docker compose -f docker/docker-compose.yml exec -it netbox ./manage.py makemigrations interface_profiles
 
      # Apply migrations
      docker compose -f docker/docker-compose.yml exec -it netbox ./manage.py migrate
 
      # Run tests
-     docker compose -f docker/docker-compose.yml exec -it netbox ./manage.py test netbox_interface_profiles.tests
+     docker compose -f docker/docker-compose.yml exec -it netbox ./manage.py test interface_profiles.tests
      ```
    * DO NOT run any `manage.py` commands directly on the host. All validation, migrations, and tests must go through the Docker environment.
 

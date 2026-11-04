@@ -11,7 +11,7 @@ lists every field.
 
 ## REST endpoints
 
-All endpoints are under `/api/plugins/netbox-interface-profiles/`.
+All endpoints are under `/api/plugins/interface-profiles/`.
 
 | Endpoint                      | Object                    |
 | ----------------------------- | ------------------------- |
@@ -30,7 +30,7 @@ applied in the same request, and the request fails when the result is not a vali
 curl -X POST \
   -H "Authorization: Bearer $NETBOX_TOKEN" \
   -H "Content-Type: application/json" \
-  https://netbox.example.com/api/plugins/netbox-interface-profiles/interface-role-assignments/ \
+  https://netbox.example.com/api/plugins/interface-profiles/interface-role-assignments/ \
   --data '{"interface": 123, "interface_role": 4}'
 ```
 

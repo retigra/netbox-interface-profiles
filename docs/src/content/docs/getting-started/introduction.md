@@ -1,11 +1,11 @@
 ---
 title: Introduction
-description: What NetBox Interface Profiles does and how its objects relate to each other.
+description: What Interface Profiles does and how its objects relate to each other.
 sidebar:
   order: 1
 ---
 
-NetBox Interface Profiles adds **interface roles** to NetBox. A role describes what an interface is used for,
+Interface Profiles adds **interface roles** to NetBox. A role describes what an interface is used for,
 such as an access port for workstations, a port for access points or an uplink. Assigning a role to an interface
 configures it: the plugin applies the role's interface attributes and VLANs, and renders the configuration the
 device needs for that interface.

@@ -25,7 +25,7 @@ NetBox is available at <http://localhost:8000>. Migrations are applied on startu
 the migration with:
 
 ```bash
-docker compose exec netbox ./manage.py makemigrations netbox_interface_profiles
+docker compose exec netbox ./manage.py makemigrations interface_profiles
 ```
 
 See [docker/README.md](https://github.com/wouterdebruijn/netbox-interface-profiles/blob/main/docker/README.md) for
@@ -34,7 +34,7 @@ details.
 ## Tests and linting
 
 ```bash
-docker compose exec netbox ./manage.py test netbox_interface_profiles.tests --keepdb
+docker compose exec netbox ./manage.py test interface_profiles.tests --keepdb
 make lint
 make format
 ```

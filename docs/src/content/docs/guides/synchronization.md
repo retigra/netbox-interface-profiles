@@ -40,5 +40,5 @@ after an interface is renamed or deleted. Delete old records from the list when 
 
 ## Permissions
 
-Starting a synchronization requires `dcim.change_interface` and `netbox_interface_profiles.view_rolesync`. Viewing
-synchronizations requires `netbox_interface_profiles.view_rolesync`.
+Starting a synchronization requires `dcim.change_interface` and `interface_profiles.view_rolesync`. Viewing
+synchronizations requires `interface_profiles.view_rolesync`.

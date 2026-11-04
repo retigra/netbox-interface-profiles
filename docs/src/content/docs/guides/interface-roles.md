@@ -43,7 +43,7 @@ Assignments list
   CSV/YAML/JSON import.
 
 REST API
-: Create, change or delete objects at `/api/plugins/netbox-interface-profiles/interface-role-assignments/`.
+: Create, change or delete objects at `/api/plugins/interface-profiles/interface-role-assignments/`.
   See the [REST API reference](../../reference/api/).
 
 ## What happens on assignment
