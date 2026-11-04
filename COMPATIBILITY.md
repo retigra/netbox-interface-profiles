@@ -21,5 +21,5 @@ When upgrading NetBox or this plugin:
 6. Restart NetBox and its worker
 
 See the
-[compatibility documentation](https://wouterdebruijn.github.io/netbox-interface-profiles/latest/reference/compatibility/)
+[compatibility documentation](https://retigra.github.io/netbox-interface-profiles/latest/reference/compatibility/)
 for details.

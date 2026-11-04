@@ -27,7 +27,7 @@ class InterfaceProfilesConfig(PluginConfig):
     max_version = "4.7.99"
     graphql_schema = "graphql.schema"
 
-    url = "https://github.com/wouterdebruijn/netbox-interface-profiles"
+    url = "https://github.com/retigra/netbox-interface-profiles"
 
     def ready(self) -> None:
         """Register plugin signal handlers."""

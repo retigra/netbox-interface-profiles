@@ -32,5 +32,5 @@ First public release, for NetBox 4.7.
   `interface-configs/` endpoint returning the role, matching templates and
   rendered configuration of an interface in a single call.
 
-[Unreleased]: https://github.com/wouterdebruijn/netbox-interface-profiles/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/wouterdebruijn/netbox-interface-profiles/releases/tag/v0.1.0
+[Unreleased]: https://github.com/retigra/netbox-interface-profiles/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/retigra/netbox-interface-profiles/releases/tag/v0.1.0

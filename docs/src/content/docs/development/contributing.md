@@ -6,8 +6,8 @@ sidebar:
 ---
 
 Contributions are welcome. Report bugs and request features in
-[GitHub Issues](https://github.com/wouterdebruijn/netbox-interface-profiles/issues), and see
-[CONTRIBUTING.md](https://github.com/wouterdebruijn/netbox-interface-profiles/blob/main/CONTRIBUTING.md) for the
+[GitHub Issues](https://github.com/retigra/netbox-interface-profiles/issues), and see
+[CONTRIBUTING.md](https://github.com/retigra/netbox-interface-profiles/blob/main/CONTRIBUTING.md) for the
 pull request guidelines.
 
 ## Development environment
@@ -28,7 +28,7 @@ the migration with:
 docker compose exec netbox ./manage.py makemigrations interface_profiles
 ```
 
-See [docker/README.md](https://github.com/wouterdebruijn/netbox-interface-profiles/blob/main/docker/README.md) for
+See [docker/README.md](https://github.com/retigra/netbox-interface-profiles/blob/main/docker/README.md) for
 details.
 
 ## Tests and linting
@@ -52,4 +52,4 @@ push and pull request.
 
 Releases are tagged `vX.Y.Z`. A tag publishes the package to PyPI and the documentation of that version to `/X.Y/`
 and `/latest/`. See the release checklist in
-[CONTRIBUTING.md](https://github.com/wouterdebruijn/netbox-interface-profiles/blob/main/CONTRIBUTING.md#releasing).
+[CONTRIBUTING.md](https://github.com/retigra/netbox-interface-profiles/blob/main/CONTRIBUTING.md#releasing).

@@ -5,7 +5,7 @@ import { defineConfig } from 'astro/config';
 import { repository, root, version } from './site.mjs';
 
 export default defineConfig({
-	site: 'https://wouterdebruijn.github.io',
+	site: 'https://retigra.github.io',
 	base: `${root}${version}/`,
 	trailingSlash: 'always',
 	integrations: [

@@ -32,7 +32,7 @@ transparent as possible, whether it's:
 
 ### Report Bugs
 
-Report bugs at https://github.com/wouterdebruijn/netbox-interface-profiles/issues.
+Report bugs at https://github.com/retigra/netbox-interface-profiles/issues.
 
 If you are reporting a bug, please include:
 
@@ -59,7 +59,7 @@ blog posts, articles, and such.
 ### Submit Feedback
 
 The best way to send feedback is to file an issue at
-https://github.com/wouterdebruijn/netbox-interface-profiles/issues.
+https://github.com/retigra/netbox-interface-profiles/issues.
 
 If you are proposing a feature:
 
@@ -115,7 +115,7 @@ Before you submit a pull request, check that it meets these guidelines:
 2. If the pull request adds functionality, the documentation in `docs/` should
    be updated, and the change added to [CHANGELOG.md](CHANGELOG.md).
 3. The pull request should work for Python 3.12, 3.13, and 3.14. Check
-   https://github.com/wouterdebruijn/netbox-interface-profiles/actions and make sure
+   https://github.com/retigra/netbox-interface-profiles/actions and make sure
    that the tests pass for all supported Python versions.
 
 ## Releasing
@@ -130,3 +130,5 @@ A reminder for the maintainers on how to release:
    section for the new version.
 4. Commit, then create a GitHub release with a new `vX.Y.Z` tag. The tag
    publishes the package to PyPI and the documentation to `/X.Y/` and `/latest/`.
+   The package is only published when the tests pass and the tag matches the
+   version in `pyproject.toml` and `interface_profiles/__init__.py`.

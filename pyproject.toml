@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "interface-profiles"
 version = "0.1.0"
-authors = [{ name = "Wouter de Bruijn", email = "wouter@hedium.nl" }]
+authors = [{ name = "Wouter de Bruijn", email = "wouter@retigra.nl" }]
 description = "NetBox plugin for managing interface configuration profiles."
 readme = "README.md"
 license-files = ["LICENSE"]
@@ -35,9 +35,9 @@ requires-python = ">=3.12.0"
 test = ["check-manifest==0.51", "ruff==0.14.14", "pytest==9.0.2"]
 
 [project.urls]
-Documentation = "https://wouterdebruijn.github.io/netbox-interface-profiles/"
-Source = "https://github.com/wouterdebruijn/netbox-interface-profiles"
-Tracker = "https://github.com/wouterdebruijn/netbox-interface-profiles/issues"
+Documentation = "https://retigra.github.io/netbox-interface-profiles/"
+Source = "https://github.com/retigra/netbox-interface-profiles"
+Tracker = "https://github.com/retigra/netbox-interface-profiles/issues"
 
 [tool.ruff]
 line-length = 120

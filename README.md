@@ -4,26 +4,26 @@ A NetBox plugin that gives interfaces a **role**, such as an access port or an
 uplink, and configures them from it: interface attributes, VLANs and the
 rendered device configuration follow the role.
 
-**Documentation: <https://wouterdebruijn.github.io/netbox-interface-profiles/>**
+**Documentation: <https://retigra.github.io/netbox-interface-profiles/>**
 
 ## Features
 
-- [Interface roles](https://wouterdebruijn.github.io/netbox-interface-profiles/latest/guides/interface-roles/):
+- [Interface roles](https://retigra.github.io/netbox-interface-profiles/latest/guides/interface-roles/):
   describe what an interface is for and assign it from the device page, in bulk,
   or through the REST API.
-- [Interface templates](https://wouterdebruijn.github.io/netbox-interface-profiles/latest/guides/interface-templates/):
+- [Interface templates](https://retigra.github.io/netbox-interface-profiles/latest/guides/interface-templates/):
   set the description, speed, duplex, MTU, VRF, 802.1Q mode, VLANs, VLAN
   translation policy and PoE per role, globally or per site group or site. VLANs
   are set by VID and resolved in the interface's site.
-- [Synchronization](https://wouterdebruijn.github.io/netbox-interface-profiles/latest/guides/synchronization/):
+- [Synchronization](https://retigra.github.io/netbox-interface-profiles/latest/guides/synchronization/):
   apply changed templates to every interface with a role, with a dry run to
   review the changes first.
-- [Config templates](https://wouterdebruijn.github.io/netbox-interface-profiles/latest/guides/config-templates/):
+- [Config templates](https://retigra.github.io/netbox-interface-profiles/latest/guides/config-templates/):
   render per-interface device configuration with Jinja2, per platform, device
   type and tags, and embed it in NetBox device config templates.
-- [Permissions](https://wouterdebruijn.github.io/netbox-interface-profiles/latest/guides/permissions/):
+- [Permissions](https://retigra.github.io/netbox-interface-profiles/latest/guides/permissions/):
   delegate which roles a team may assign with NetBox object permissions.
-- [REST API and GraphQL](https://wouterdebruijn.github.io/netbox-interface-profiles/latest/reference/api/):
+- [REST API and GraphQL](https://retigra.github.io/netbox-interface-profiles/latest/reference/api/):
   every object is available through the APIs, and a single call returns the
   role and rendered configuration of an interface for automation.
 
@@ -69,9 +69,9 @@ sudo systemctl restart netbox netbox-rq
 ```
 
 See the
-[installation guide](https://wouterdebruijn.github.io/netbox-interface-profiles/latest/getting-started/installation/)
+[installation guide](https://retigra.github.io/netbox-interface-profiles/latest/getting-started/installation/)
 for all steps, and the
-[quick start](https://wouterdebruijn.github.io/netbox-interface-profiles/latest/getting-started/quick-start/)
+[quick start](https://retigra.github.io/netbox-interface-profiles/latest/getting-started/quick-start/)
 to set up a first role.
 
 ## Automation
@@ -98,14 +98,14 @@ curl -H "Authorization: Bearer $NETBOX_TOKEN" \
 
 It supports all of NetBox's interface filters, e.g.
 `?device=sw01&has_interface_role=true`. See the
-[REST API reference](https://wouterdebruijn.github.io/netbox-interface-profiles/latest/reference/api/).
+[REST API reference](https://retigra.github.io/netbox-interface-profiles/latest/reference/api/).
 
 ## Development
 
 A Docker Compose environment runs a full NetBox stack with the plugin installed
 in editable mode and hot reloading enabled. See
 [docker/README.md](docker/README.md), [TESTING.md](TESTING.md) and
-[Writing documentation](https://wouterdebruijn.github.io/netbox-interface-profiles/latest/development/documentation/).
+[Writing documentation](https://retigra.github.io/netbox-interface-profiles/latest/development/documentation/).
 
 ```bash
 cd docker && docker compose up   # NetBox at http://localhost:8000
@@ -116,7 +116,7 @@ make docker-test                 # run the test suite
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for
 guidelines. Bugs and feature requests can be submitted via
-[GitHub Issues](https://github.com/wouterdebruijn/netbox-interface-profiles/issues).
+[GitHub Issues](https://github.com/retigra/netbox-interface-profiles/issues).
 Changes are listed in the [changelog](CHANGELOG.md).
 
 ## Credits

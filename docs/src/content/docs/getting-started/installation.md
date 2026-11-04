@@ -37,7 +37,7 @@ not tested. See [compatibility](../../reference/compatibility/) for the NetBox v
 To try the latest development version instead, install from GitHub:
 
 ```bash
-pip install git+https://github.com/wouterdebruijn/netbox-interface-profiles
+pip install git+https://github.com/retigra/netbox-interface-profiles
 ```
 
 ### netbox-docker

@@ -1,19 +1,56 @@
+---
 # see: https://packaging.python.org/en/latest/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/
-name: Publish Python 🐍 distribution 📦 to PyPI
+name: Publish to PyPI
 
-on: push
+# The package is built and checked on every pull request and push to main. A release tag vX.Y.Z also runs the full
+# test suite and, when it passes, publishes the package to PyPI with trusted publishing.
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
+  test:
+    name: Test
+    if: startsWith(github.ref, 'refs/tags/v')
+    uses: ./.github/workflows/ci.yaml
+
   build:
-    name: Build distribution 📦
+    name: Build distribution
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Install uv
         uses: astral-sh/setup-uv@v5
+
+      - name: Check that the tag matches the package version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pyproject=$(python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
+          init=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' interface_profiles/__init__.py)
+          echo "tag: $tag, pyproject.toml: $pyproject, interface_profiles/__init__.py: $init"
+          if [[ "$tag" != "$pyproject" || "$tag" != "$init" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match the version in pyproject.toml ($pyproject) and interface_profiles/__init__.py ($init)"
+            exit 1
+          fi
+
       - name: Build a binary wheel and a source tarball
         run: uv build
+
+      - name: Check the distribution metadata
+        run: uvx twine check --strict dist/*
+
       - name: Store the distribution packages
         uses: actions/upload-artifact@v4
         with:
@@ -21,17 +58,17 @@ jobs:
           path: dist/
 
   publish-to-pypi:
-    name: >-
-      Publish Python 🐍 distribution 📦 to PyPI
-    if: startsWith(github.ref, 'refs/tags/') # only publish to PyPI on tag pushes
+    name: Publish to PyPI
+    if: startsWith(github.ref, 'refs/tags/v')
     needs:
+      - test
       - build
     runs-on: ubuntu-latest
     environment:
       name: pypi
       url: https://pypi.org/p/interface-profiles
     permissions:
-      id-token: write # IMPORTANT: mandatory for trusted publishing
+      id-token: write # mandatory for trusted publishing
 
     steps:
       - name: Download all the dists
@@ -39,5 +76,6 @@ jobs:
         with:
           name: python-package-distributions
           path: dist/
-      - name: Publish distribution 📦 to PyPI
+
+      - name: Publish distribution to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
