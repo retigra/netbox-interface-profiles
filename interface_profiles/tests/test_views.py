@@ -4,11 +4,12 @@ Test cases for interface profiles views.
 
 import re
 
-from dcim.choices import InterfaceTypeChoices
+from dcim.choices import InterfaceModeChoices, InterfaceTypeChoices
 from dcim.models import Device, DeviceRole, DeviceType, Interface, Manufacturer, Platform, Site, SiteGroup
 from django.test import Client
 from django.urls import reverse
 from django.utils.html import escape
+from ipam.models import VRF
 
 from ..models import (
     InterfaceRole,
@@ -906,3 +907,129 @@ class RoleGroupViewTestCase(PluginViewTestCase):
         self.assertHttpStatus(response, 200)
         self.assertContains(response, self.role.name)
         self.assertNotContains(response, "Ungrouped Role")
+
+
+class InterfaceTemplateViewTestCase(PluginViewTestCase):
+    """Test the InterfaceTemplate detail, edit, bulk edit and import views."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.role = InterfaceRole.objects.create(name="Template View Role")
+        cls.vrf = VRF.objects.create(name="Template VRF", rd="65000:10")
+        cls.template = InterfaceTemplate.objects.create(
+            interface_role=cls.role,
+            name="Detail Template",
+            mgmt_only=True,
+            interface_description="Uplink",
+            speed=1000000,
+            mode=InterfaceModeChoices.MODE_TAGGED,
+            tagged_vlans_vids=[10, 20],
+            poe_mode="pse",
+            vrf=cls.vrf,
+            set_null_mtu=True,
+        )
+
+    def test_detail_view_renders_attributes(self):
+        self.add_permissions("interface_profiles.view_interfacetemplate")
+
+        response = self.client.get(self.template.get_absolute_url())
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, "Uplink")
+        self.assertContains(response, "1000000")
+        self.assertContains(response, "PSE")
+        self.assertContains(response, "10, 20")
+        self.assertContains(response, self.vrf.get_absolute_url())
+        self.assertContains(response, "Cleared on the interface")
+
+    def test_add_form_creates_template(self):
+        self.add_permissions(
+            "interface_profiles.add_interfacetemplate", "interface_profiles.view_interfacerole", "ipam.view_vrf"
+        )
+        url = reverse("plugins:interface_profiles:interfacetemplate_add")
+
+        self.assertHttpStatus(self.client.get(url), 200)
+        response = self.client.post(
+            url,
+            {
+                "interface_role": self.role.pk,
+                "name": "Created Template",
+                "enabled": "on",
+                "mgmt_only": "false",
+                "interface_description": "Access point",
+                "mode": InterfaceModeChoices.MODE_TAGGED,
+                "tagged_vlans_vids": "100-102",
+                "poe_type": "type2-ieee802.3at",
+                "vrf": self.vrf.pk,
+            },
+        )
+
+        self.assertHttpStatus(response, 302)
+        template = InterfaceTemplate.objects.get(name="Created Template")
+        self.assertIs(template.mgmt_only, False)
+        self.assertEqual(template.interface_description, "Access point")
+        self.assertEqual(template.tagged_vlans_vids, [100, 101, 102])
+        self.assertEqual(template.poe_type, "type2-ieee802.3at")
+        self.assertEqual(template.vrf, self.vrf)
+
+    def test_edit_form_renders_existing_values(self):
+        self.add_permissions("interface_profiles.change_interfacetemplate")
+
+        response = self.client.get(
+            reverse("plugins:interface_profiles:interfacetemplate_edit", args=[self.template.pk])
+        )
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, 'value="10,20"')
+
+    def test_bulk_edit_sets_attributes(self):
+        self.add_permissions("interface_profiles.view_interfacetemplate", "interface_profiles.change_interfacetemplate")
+
+        response = self.client.post(
+            reverse("plugins:interface_profiles:interfacetemplate_bulk_edit"),
+            {
+                "pk": [self.template.pk],
+                "_apply": True,
+                "interface_description": "Bulk",
+                "poe_type": "type1-ieee802.3af",
+                "_nullify": ["vrf"],
+            },
+        )
+
+        self.assertHttpStatus(response, 302)
+        self.template.refresh_from_db()
+        self.assertEqual(self.template.interface_description, "Bulk")
+        self.assertEqual(self.template.poe_type, "type1-ieee802.3af")
+        self.assertIsNone(self.template.vrf)
+
+    def test_import_yaml(self):
+        self.add_permissions(
+            "interface_profiles.view_interfacetemplate",
+            "interface_profiles.add_interfacetemplate",
+            "interface_profiles.view_interfacerole",
+            "ipam.view_vrf",
+        )
+        site = Site.objects.create(name="Import Site", slug="import-site")
+        data = f"""
+- interface_role: Template View Role
+  name: Imported Template
+  scope_type: dcim.site
+  scope_id: {site.pk}
+  mode: tagged
+  tagged_vlans_vids: "10,20-21"
+  vrf: "65000:10"
+  poe_mode: pd
+"""
+
+        response = self.client.post(
+            reverse("plugins:interface_profiles:interfacetemplate_import"),
+            {"data": data, "format": "yaml"},
+        )
+
+        self.assertHttpStatus(response, 302)
+        template = InterfaceTemplate.objects.get(name="Imported Template")
+        self.assertEqual(template.scope, site)
+        self.assertEqual(template.tagged_vlans_vids, [10, 20, 21])
+        self.assertEqual(template.vrf, self.vrf)
+        self.assertEqual(template.poe_mode, "pd")
+        self.assertIsNone(template.duplex)

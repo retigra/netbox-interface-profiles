@@ -31,70 +31,92 @@
           </tr>
         </table>
       </div>
+      <div class="card">
+        <h5 class="card-header">General</h5>
+        <table class="table table-hover attr-table">
+          <tr>
+            <th scope="row">Enabled</th>
+            <td>{% template_attribute object 'enabled' %}</td>
+          </tr>
+          <tr>
+            <th scope="row">Management only</th>
+            <td>{% template_attribute object 'mgmt_only' %}</td>
+          </tr>
+          <tr>
+            <th scope="row">Interface description</th>
+            <td>{% template_attribute object 'interface_description' %}</td>
+          </tr>
+        </table>
+      </div>
+      <div class="card">
+        <h5 class="card-header">Physical</h5>
+        <table class="table table-hover attr-table">
+          <tr>
+            <th scope="row">Speed (Kbps)</th>
+            <td>{% template_attribute object 'speed' %}</td>
+          </tr>
+          <tr>
+            <th scope="row">Duplex</th>
+            <td>{% template_attribute object 'duplex' %}</td>
+          </tr>
+          <tr>
+            <th scope="row">MTU</th>
+            <td>{% template_attribute object 'mtu' %}</td>
+          </tr>
+        </table>
+      </div>
+      <div class="card">
+        <h5 class="card-header">Addressing</h5>
+        <table class="table table-hover attr-table">
+          <tr>
+            <th scope="row">VRF</th>
+            <td>{% template_attribute object 'vrf' %}</td>
+          </tr>
+        </table>
+      </div>
     </div>
 
     <div class="col col-md-6">
       <div class="card">
-        <h5 class="card-header">Template Attributes</h5>
+        <h5 class="card-header">802.1Q Switching</h5>
         <table class="table table-hover attr-table">
           <tr>
-            <th scope="row">Speed (Mbps)</th>
-            <td>
-              {% template_attribute object 'speed' %}
-            </td>
-          </tr>
-          <tr>
-            <th scope="row">Duplex</th>
-            <td>
-              {% template_attribute object 'duplex' %}
-            </td>
-          </tr>
-          <tr>
-            <th scope="row">MTU</th>
-            <td>
-              {% template_attribute object 'mtu' %}
-            </td>
-          </tr>
-          <tr>
-            <th scope="row">Mode</th>
-            <td>
-              {% template_attribute object 'mode' %}
-            </td>
-          </tr>
-          <tr>
-            <th scope="row">Enabled</th>
-            <td>
-              {% if object.enabled %}
-                Yes
-              {% else %}
-                No
-              {% endif %}
-            </td>
-          </tr>
-          <tr>
-            <th scope="row">POE Mode</th>
-            <td>
-              {% template_attribute object 'poe_mode' %}
-            </td>
+            <th scope="row">802.1Q mode</th>
+            <td>{% template_attribute object 'mode' %}</td>
           </tr>
           <tr>
             <th scope="row">Untagged VLAN VID</th>
-            <td>
-              {% template_attribute object 'untagged_vlan_vid' %}
-            </td>
+            <td>{% template_attribute object 'untagged_vlan_vid' %}</td>
           </tr>
           <tr>
             <th scope="row">Tagged VLAN VIDs</th>
-            <td>
-              {% if object.tagged_vlans_vids %}
-                {{ object.tagged_vlans_vids|join:', ' }}
-              {% else %}
-                <span class="text-muted">None</span>
-              {% endif %}
-            </td>
+            <td>{% template_attribute object 'tagged_vlans_vids' %}</td>
+          </tr>
+          <tr>
+            <th scope="row">Q-in-Q SVLAN VID</th>
+            <td>{% template_attribute object 'qinq_svlan_vid' %}</td>
+          </tr>
+          <tr>
+            <th scope="row">VLAN translation policy</th>
+            <td>{% template_attribute object 'vlan_translation_policy' %}</td>
           </tr>
         </table>
       </div>
+      <div class="card">
+        <h5 class="card-header">Power over Ethernet</h5>
+        <table class="table table-hover attr-table">
+          <tr>
+            <th scope="row">PoE mode</th>
+            <td>{% template_attribute object 'poe_mode' %}</td>
+          </tr>
+          <tr>
+            <th scope="row">PoE type</th>
+            <td>{% template_attribute object 'poe_type' %}</td>
+          </tr>
+        </table>
+      </div>
+      {% include 'inc/panels/custom_fields.html' %}
+      {% include 'inc/panels/tags.html' %}
     </div>
   </div>
 {% endblock %}

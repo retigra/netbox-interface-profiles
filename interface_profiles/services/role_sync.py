@@ -4,36 +4,31 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Iterable
-from typing import Any, cast
+from typing import Any, NoReturn, cast
 
+from dcim.choices import InterfaceModeChoices
 from dcim.models import Interface, Site, SiteGroup
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import NON_FIELD_ERRORS, FieldDoesNotExist, ValidationError
 from django.db import transaction
-from django.db.models import Case, Field, ForeignKey, IntegerField, ManyToManyField, Model, Q, Value, When
+from django.db.models import Case, Field, ForeignKey, IntegerField, ManyToManyField, Model, Q, QuerySet, Value, When
 from ipam.models import VLAN
 from utilities.exceptions import AbortRequest
 
 from ..models import InterfaceRoleAssignment, InterfaceTemplate, RoleSync, RoleSyncChange
+from ..models.interface_template import TEMPLATE_INTERFACE_FIELDS
 
-SYNC_SCALAR_FIELDS = (
-    "enabled",
-    "speed",
-    "duplex",
-    "mtu",
-    "mode",
-    "poe_mode",
-)
+# Interface fields set by _apply_diff() before the interface is validated and saved
+SAVED_INTERFACE_FIELDS = (*TEMPLATE_INTERFACE_FIELDS.values(), "untagged_vlan", "qinq_svlan")
 
 
-def _get_matching_template(assignment: InterfaceRoleAssignment) -> InterfaceTemplate | None:
-    """Return the best matching interface template for an assignment.
+def get_matching_templates(interface, interface_role) -> QuerySet[InterfaceTemplate]:
+    """Return the interface templates of a role that match an interface, the one that applies first.
 
     Priority order: site-scoped > site-group-scoped > global (no scope).
     """
-    interface = cast(Any, assignment.interface)
     site = interface.device.site
-    site_group = getattr(site, "group", None)
+    site_group_id = getattr(site, "group_id", None)
 
     site_ct = ContentType.objects.get_for_model(Site)
     site_group_ct = ContentType.objects.get_for_model(SiteGroup)
@@ -41,11 +36,11 @@ def _get_matching_template(assignment: InterfaceRoleAssignment) -> InterfaceTemp
     scope_q = Q(scope_type__isnull=True)  # global
     if site:
         scope_q |= Q(scope_type=site_ct, scope_id=site.pk)
-    if site_group:
-        scope_q |= Q(scope_type=site_group_ct, scope_id=site_group.pk)
+    if site_group_id:
+        scope_q |= Q(scope_type=site_group_ct, scope_id=site_group_id)
 
-    templates = (
-        InterfaceTemplate.objects.filter(interface_role=assignment.interface_role)
+    return (
+        InterfaceTemplate.objects.filter(interface_role=interface_role)
         .filter(scope_q)
         .annotate(
             scope_priority=Case(
@@ -55,9 +50,13 @@ def _get_matching_template(assignment: InterfaceRoleAssignment) -> InterfaceTemp
                 output_field=IntegerField(),
             )
         )
+        .order_by("scope_priority", "pk")
     )
 
-    return templates.order_by("scope_priority", "pk").first()
+
+def _get_matching_template(assignment: InterfaceRoleAssignment) -> InterfaceTemplate | None:
+    """Return the interface template that applies to an assignment, if any."""
+    return get_matching_templates(assignment.interface, assignment.interface_role).first()
 
 
 def _capture_tagged_vlans(interface) -> list[VLAN]:
@@ -65,32 +64,53 @@ def _capture_tagged_vlans(interface) -> list[VLAN]:
     return list(interface.tagged_vlans.all().order_by("vid", "pk"))
 
 
+def _vlan_diff(changes: dict[str, tuple[Any, Any]], interface, field: str, desired: VLAN | None) -> None:
+    """Record a change of a VLAN foreign key of the interface when it differs from the desired VLAN."""
+    if getattr(interface, f"{field}_id") != getattr(desired, "pk", None):
+        changes[field] = (getattr(interface, field), desired)
+
+
 def _build_diff(interface, template: InterfaceTemplate) -> dict[str, tuple[Any, Any]]:
-    """Build a field diff between interface attributes and template-derived values."""
+    """Build a field diff between interface attributes and template-derived values.
+
+    Keys are interface field names. Foreign keys are compared and set by primary key.
+    """
     changes: dict[str, tuple[Any, Any]] = {}
 
-    for field in SYNC_SCALAR_FIELDS:
-        desired = getattr(template, field)
-        if desired == "":
-            # A blank choice means no value, just like None
-            desired = None
-        if field != "enabled" and desired is None and not template.is_set_null(field):
-            continue
-        current = getattr(interface, field)
+    for template_field, interface_field in TEMPLATE_INTERFACE_FIELDS.items():
+        desired = getattr(template, cast(Any, InterfaceTemplate)._meta.get_field(template_field).attname)
+        if desired in (None, ""):
+            # Empty values leave the interface unchanged, unless the template clears the attribute
+            if not template.is_set_null(template_field):
+                continue
+            field = cast(Any, Interface)._meta.get_field(interface_field)
+            desired = None if field.null else ""
+        current = getattr(interface, cast(Any, Interface)._meta.get_field(interface_field).attname)
         if current != desired:
-            changes[field] = (current, desired)
+            changes[interface_field] = (current, desired)
 
-    if "mode" in changes and changes["mode"][1] is None:
-        # NetBox only allows an untagged VLAN on interfaces with a mode
-        if interface.untagged_vlan_id is not None:
-            changes["untagged_vlan"] = (interface.untagged_vlan, None)
+    site = interface.device.site
+    mode = changes["mode"][1] if "mode" in changes else interface.mode
+    mode_changed = "mode" in changes
+
+    # NetBox only allows an untagged VLAN on interfaces with a mode
+    if mode_changed and not mode:
+        _vlan_diff(changes, interface, "untagged_vlan", None)
     elif template.untagged_vlan_vid is not None or template.is_set_null("untagged_vlan_vid"):
-        desired_untagged = template.resolve_untagged_vlan(interface.device.site)
-        current_untagged = interface.untagged_vlan
-        if interface.untagged_vlan_id != getattr(desired_untagged, "pk", None):
-            changes["untagged_vlan"] = (current_untagged, desired_untagged)
+        _vlan_diff(changes, interface, "untagged_vlan", template.resolve_untagged_vlan(site))
 
-    desired_tagged = template.resolve_tagged_vlans(interface.device.site)
+    # NetBox only allows a service VLAN on Q-in-Q interfaces
+    if template.qinq_svlan_vid is not None or template.is_set_null("qinq_svlan_vid"):
+        _vlan_diff(changes, interface, "qinq_svlan", template.resolve_qinq_svlan(site))
+    elif mode_changed and mode != InterfaceModeChoices.MODE_Q_IN_Q:
+        _vlan_diff(changes, interface, "qinq_svlan", None)
+
+    # Tagged VLANs are always applied: an empty list removes them. NetBox only allows them in the tagged mode, so
+    # VIDs on an interface in another mode are left for _apply_diff() to reject.
+    if mode == InterfaceModeChoices.MODE_TAGGED or template.tagged_vlans_vids:
+        desired_tagged = template.resolve_tagged_vlans(site)
+    else:
+        desired_tagged = []
     current_tagged = _capture_tagged_vlans(interface)
     if {v.pk for v in current_tagged} != {v.pk for v in desired_tagged}:
         changes["tagged_vlans"] = (current_tagged, desired_tagged)
@@ -117,30 +137,29 @@ def _apply_diff(interface, changes: dict[str, tuple[Any, Any]], role) -> None:
     Raises AbortRequest when the result is not a valid interface. NetBox views and the REST API show its
     message to the user and roll back the request, including the assignment that triggered the sync.
     """
-    scalar_changed = False
 
-    for field in SYNC_SCALAR_FIELDS:
-        if field in changes:
-            _, new_value = changes[field]
+    def abort(message: str, exc: Exception | None = None) -> NoReturn:
+        raise AbortRequest(f"Role {role} cannot be applied to {interface.device} {interface.name}: {message}") from exc
+
+    saved_changes = [field for field in SAVED_INTERFACE_FIELDS if field in changes]
+    for field in saved_changes:
+        _, new_value = changes[field]
+        if isinstance(new_value, Model):
             setattr(interface, field, new_value)
-            scalar_changed = True
+        else:
+            setattr(interface, cast(Any, Interface)._meta.get_field(field).attname, new_value)
 
-    if "untagged_vlan" in changes:
-        _, new_untagged = changes["untagged_vlan"]
-        interface.untagged_vlan = new_untagged
-        scalar_changed = True
-
-    if scalar_changed:
+    if saved_changes:
         try:
             interface.full_clean()
         except ValidationError as exc:
-            raise AbortRequest(
-                f"Role {role} cannot be applied to {interface.device} {interface.name}: {_format_validation_error(exc)}"
-            ) from exc
+            abort(_format_validation_error(exc), exc)
         interface.save()
 
     if "tagged_vlans" in changes:
         _, new_tagged = changes["tagged_vlans"]
+        if new_tagged and interface.mode != InterfaceModeChoices.MODE_TAGGED:
+            abort(f"Tagged VLANs: Interface mode {interface.mode or 'none'} does not support tagged VLANs.")
         interface.tagged_vlans.set(new_tagged)
 
 

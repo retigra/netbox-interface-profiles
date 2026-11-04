@@ -132,6 +132,15 @@ class ProfileConfigTemplate(SyncedDataMixin, RenderTemplateMixin, NetBoxModel):
 
     cast(Any, sync_data).alters_data = True
 
+    def format_render_error(self, exc: Exception) -> str:
+        """
+        Format a rendering error like NetBox config templates do: a full (sanitized) traceback in debug mode,
+        otherwise a concise message.
+        """
+        from extras.models import ConfigTemplate
+
+        return ConfigTemplate.format_render_error(cast(Any, self), exc)
+
     def get_environment_params(self):
         """
         Interface configuration is plain text, so autoescape is always disabled (as for NetBox config templates).

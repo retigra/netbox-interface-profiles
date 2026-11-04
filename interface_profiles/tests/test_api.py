@@ -2,10 +2,13 @@
 Test cases for interface profiles REST API.
 """
 
-from dcim.models import Platform
+from dcim.choices import InterfaceModeChoices, InterfaceTypeChoices
+from dcim.models import Device, DeviceRole, DeviceType, Interface, Manufacturer, Platform, Site
 from django.urls import reverse
+from extras.models import ConfigContext
+from ipam.models import VLAN
 
-from ..models import InterfaceRole, ProfileConfigTemplate, RoleGroup
+from ..models import InterfaceRole, InterfaceRoleAssignment, InterfaceTemplate, ProfileConfigTemplate, RoleGroup
 from ..testing import PluginAPITestCase
 from ..testing.utils import create_tags, disable_warnings, get_random_string
 
@@ -280,3 +283,272 @@ class ProfileConfigTemplateAPITestCase(PluginAPITestCase):
 
         self.add_permissions("interface_profiles.sync_profileconfigtemplate")
         self.assertHttpStatus(self.client.post(url, format="json"), 200)
+
+
+class InterfaceConfigAPITestMixin:
+    """A device with a role assigned to one of its interfaces, with an interface and config template."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.group = RoleGroup.objects.create(name="Access", slug="access")
+        cls.role = InterfaceRole.objects.create(name="Workstation", group=cls.group)
+        cls.platform = Platform.objects.create(name="IOS", slug="ios")
+        site = Site.objects.create(name="Site-API", slug="site-api")
+        manufacturer = Manufacturer.objects.create(name="Manufacturer-API", slug="manufacturer-api")
+        device_type = DeviceType.objects.create(manufacturer=manufacturer, model="Type-API", slug="type-api")
+        device_role = DeviceRole.objects.create(name="Role-API", slug="role-api")
+        cls.device = Device.objects.create(
+            name="sw01", site=site, device_type=device_type, role=device_role, platform=cls.platform
+        )
+        cls.other_device = Device.objects.create(
+            name="sw02", site=site, device_type=device_type, role=device_role, platform=cls.platform
+        )
+        VLAN.objects.create(name="Users", vid=100, site=site)
+
+        cls.interface = Interface.objects.create(
+            device=cls.device, name="Gi1", type=InterfaceTypeChoices.TYPE_1GE_FIXED
+        )
+        cls.unassigned_interface = Interface.objects.create(
+            device=cls.device, name="Gi2", type=InterfaceTypeChoices.TYPE_1GE_FIXED
+        )
+        cls.other_interface = Interface.objects.create(
+            device=cls.other_device, name="Gi1", type=InterfaceTypeChoices.TYPE_1GE_FIXED
+        )
+
+        cls.interface_template = InterfaceTemplate.objects.create(
+            interface_role=cls.role, name="Default", mode=InterfaceModeChoices.MODE_ACCESS, untagged_vlan_vid=100
+        )
+        cls.config_template = ProfileConfigTemplate.objects.create(
+            name="IOS access",
+            interface_role=cls.role,
+            platform=cls.platform,
+            template_code=(
+                "interface {{ interface.name }}\n"
+                " switchport access vlan {{ interface.untagged_vlan.vid }}\n"
+                " ntp {{ ntp_server }}"
+            ),
+        )
+        ConfigContext.objects.create(name="NTP", data={"ntp_server": "192.0.2.1"})
+
+        cls.assignment = InterfaceRoleAssignment.objects.create(interface=cls.interface, interface_role=cls.role)
+        InterfaceRoleAssignment.objects.create(interface=cls.other_interface, interface_role=cls.role)
+
+
+class InterfaceRoleAssignmentAPITestCase(InterfaceConfigAPITestMixin, PluginAPITestCase):
+    """Test the InterfaceRoleAssignment API endpoint."""
+
+    def setUp(self):
+        super().setUp()
+        self.list_url_name = "plugins-api:interface_profiles-api:interfaceroleassignment-list"
+
+    def test_filter_by_interface_returns_nested_role(self):
+        """Filtering on an interface ID returns its assignment with the role as a nested object."""
+        self.add_permissions("interface_profiles.view_interfaceroleassignment")
+
+        response = self.client.get(self._get_list_url(), {"interface_id": self.interface.pk})
+
+        self.assertHttpStatus(response, 200)
+        self.assertEqual(response.data["count"], 1)
+        result = response.data["results"][0]
+        self.assertEqual(result["interface"]["id"], self.interface.pk)
+        self.assertEqual(result["interface"]["device"]["name"], "sw01")
+        self.assertEqual(result["interface_role"]["id"], self.role.pk)
+        self.assertEqual(result["interface_role"]["name"], "Workstation")
+        self.assertEqual(result["interface_role"]["group"]["slug"], "access")
+
+    def test_filter_by_device_and_interface_name(self):
+        """Assignments can be looked up by device and interface name."""
+        self.add_permissions("interface_profiles.view_interfaceroleassignment")
+
+        response = self.client.get(self._get_list_url(), {"device": "sw02", "interface": "Gi1"})
+
+        self.assertHttpStatus(response, 200)
+        self.assertEqual([result["interface"]["id"] for result in response.data["results"]], [self.other_interface.pk])
+
+    def test_create_assignment_by_id(self):
+        """The interface and role are still written by ID."""
+        self.add_permissions("interface_profiles.add_interfaceroleassignment", "dcim.change_interface")
+
+        response = self.client.post(
+            self._get_list_url(),
+            {"interface": self.unassigned_interface.pk, "interface_role": self.role.pk},
+            format="json",
+        )
+
+        self.assertHttpStatus(response, 201)
+        self.assertEqual(response.data["interface_role"]["name"], "Workstation")
+        self.unassigned_interface.refresh_from_db()
+        self.assertEqual(self.unassigned_interface.mode, InterfaceModeChoices.MODE_ACCESS)
+
+
+class InterfaceConfigAPITestCase(InterfaceConfigAPITestMixin, PluginAPITestCase):
+    """Test the read-only interface configuration API endpoint."""
+
+    def setUp(self):
+        super().setUp()
+        self.list_url_name = "plugins-api:interface_profiles-api:interfaceconfig-list"
+        self.detail_url_name = "plugins-api:interface_profiles-api:interfaceconfig-detail"
+
+    def test_get_interface_config(self):
+        """The detail endpoint returns the role, matching templates and rendered config of an interface."""
+        self.add_permissions("dcim.view_interface", "interface_profiles.view_interfaceroleassignment")
+
+        response = self.client.get(self._get_detail_url(self.interface))
+
+        self.assertHttpStatus(response, 200)
+        data = response.data
+        self.assertEqual(data["id"], self.interface.pk)
+        self.assertEqual(data["interface"]["name"], "Gi1")
+        self.assertEqual(data["role_assignment"]["id"], self.assignment.pk)
+        self.assertEqual(data["interface_role"]["name"], "Workstation")
+        self.assertEqual(data["interface_template"]["id"], self.interface_template.pk)
+        self.assertEqual(data["config_template"]["id"], self.config_template.pk)
+        self.assertEqual(data["config"], "interface Gi1\n switchport access vlan 100\n ntp 192.0.2.1")
+        self.assertIsNone(data["config_error"])
+
+    def test_get_interface_without_role(self):
+        """An interface without a role is returned with empty role, templates and config."""
+        self.add_permissions("dcim.view_interface", "interface_profiles.view_interfaceroleassignment")
+
+        response = self.client.get(self._get_detail_url(self.unassigned_interface))
+
+        self.assertHttpStatus(response, 200)
+        for field in ("role_assignment", "interface_role", "interface_template", "config_template", "config"):
+            self.assertIsNone(response.data[field], field)
+
+    def test_render_error_is_returned(self):
+        """A template that fails to render returns the error instead of the config."""
+        self.add_permissions("dcim.view_interface", "interface_profiles.view_interfaceroleassignment")
+        self.config_template.template_code = "{{ interface.name | no_such_filter }}"
+        self.config_template.save()
+
+        response = self.client.get(self._get_detail_url(self.interface))
+
+        self.assertHttpStatus(response, 200)
+        self.assertIsNone(response.data["config"])
+        self.assertIn("no_such_filter", response.data["config_error"])
+
+    def test_list_filtered_by_device_and_role(self):
+        """The list endpoint supports NetBox's interface filters and filters on the role."""
+        self.add_permissions("dcim.view_interface", "interface_profiles.view_interfaceroleassignment")
+
+        response = self.client.get(self._get_list_url(), {"device_id": self.device.pk})
+        self.assertHttpStatus(response, 200)
+        self.assertEqual(
+            {result["id"] for result in response.data["results"]}, {self.interface.pk, self.unassigned_interface.pk}
+        )
+
+        response = self.client.get(self._get_list_url(), {"device": "sw01", "has_interface_role": True})
+        self.assertEqual([result["id"] for result in response.data["results"]], [self.interface.pk])
+
+        response = self.client.get(self._get_list_url(), {"interface_role": "Workstation"})
+        self.assertEqual(
+            {result["id"] for result in response.data["results"]}, {self.interface.pk, self.other_interface.pk}
+        )
+
+        response = self.client.get(self._get_list_url(), {"interface_role_group": "access", "name": "Gi1"})
+        self.assertEqual(response.data["count"], 2)
+
+    def test_brief_mode_skips_rendering(self):
+        """Brief mode returns the role without rendering the configuration."""
+        self.add_permissions("dcim.view_interface", "interface_profiles.view_interfaceroleassignment")
+
+        response = self.client.get(self._get_detail_url(self.interface), {"brief": True})
+
+        self.assertHttpStatus(response, 200)
+        self.assertEqual(set(response.data), {"id", "url", "display", "interface_role"})
+        self.assertEqual(response.data["interface_role"]["name"], "Workstation")
+
+    def test_requires_view_interface_permission(self):
+        """Viewing interface configuration requires permission to view the interface."""
+        self.add_permissions("interface_profiles.view_interfaceroleassignment")
+
+        with disable_warnings("django.request"):
+            self.assertHttpStatus(self.client.get(self._get_list_url()), 403)
+
+    def test_role_hidden_without_view_assignment_permission(self):
+        """The role is only returned when the user may view the interface's role assignment."""
+        self.add_permissions("dcim.view_interface")
+
+        response = self.client.get(self._get_detail_url(self.interface))
+
+        self.assertHttpStatus(response, 200)
+        self.assertIsNone(response.data["interface_role"])
+        self.assertIsNone(response.data["config"])
+
+    def test_read_only(self):
+        """The endpoint does not accept writes."""
+        self.add_permissions("dcim.view_interface", "dcim.change_interface")
+
+        with disable_warnings("django.request"):
+            response = self.client.patch(self._get_detail_url(self.interface), {"description": "x"}, format="json")
+        self.assertIn(response.status_code, (403, 405))
+
+
+class InterfaceTemplateAPITestCase(PluginAPITestCase):
+    """Test the InterfaceTemplate API endpoint."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.role = InterfaceRole.objects.create(name="API Template Role")
+        cls.site = Site.objects.create(name="Site-Templates", slug="site-templates")
+        cls.global_template = InterfaceTemplate.objects.create(
+            interface_role=cls.role, name="Global", mode=InterfaceModeChoices.MODE_TAGGED, tagged_vlans_vids=[10, 20]
+        )
+        cls.site_template = InterfaceTemplate.objects.create(
+            interface_role=cls.role, name="Site", scope=cls.site, mode=InterfaceModeChoices.MODE_ACCESS
+        )
+
+    def setUp(self):
+        super().setUp()
+        self.list_url_name = "plugins-api:interface_profiles-api:interfacetemplate-list"
+
+    def test_filters(self):
+        self.add_permissions("interface_profiles.view_interfacetemplate")
+
+        def names(**params):
+            response = self.client.get(self._get_list_url(), params)
+            self.assertHttpStatus(response, 200)
+            return {result["name"] for result in response.data["results"]}
+
+        self.assertEqual(names(scope_site_id=self.site.pk), {"Site"})
+        self.assertEqual(names(is_global=True), {"Global"})
+        self.assertEqual(names(mode="access"), {"Site"})
+        self.assertEqual(names(tagged_vlan_vid=20), {"Global"})
+        self.assertEqual(names(interface_role="API Template Role"), {"Global", "Site"})
+
+    def test_create_with_new_attributes(self):
+        self.add_permissions("interface_profiles.add_interfacetemplate")
+
+        response = self.client.post(
+            self._get_list_url(),
+            {
+                "interface_role": self.role.pk,
+                "name": "Created",
+                "mgmt_only": True,
+                "interface_description": "Created by the API",
+                "poe_mode": "pse",
+                "poe_type": "type3-ieee802.3bt",
+                "mode": "q-in-q",
+                "qinq_svlan_vid": 1000,
+                "set_null_vrf": True,
+            },
+            format="json",
+        )
+
+        self.assertHttpStatus(response, 201)
+        self.assertEqual(response.data["interface_description"], "Created by the API")
+        self.assertEqual(response.data["poe_type"]["value"], "type3-ieee802.3bt")
+        self.assertTrue(response.data["set_null_vrf"])
+
+    def test_rejects_invalid_vids(self):
+        self.add_permissions("interface_profiles.add_interfacetemplate")
+
+        with disable_warnings("django.request"):
+            response = self.client.post(
+                self._get_list_url(),
+                {"interface_role": self.role.pk, "name": "Invalid", "tagged_vlans_vids": [5000]},
+                format="json",
+            )
+
+        self.assertHttpStatus(response, 400)

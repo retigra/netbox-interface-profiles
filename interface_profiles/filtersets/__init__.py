@@ -8,6 +8,7 @@ For django-filters documentation, see:
 https://django-filter.readthedocs.io/
 """
 
+from .interface_config import InterfaceConfigFilterSet
 from .interface_role import InterfaceRoleFilterSet
 from .interface_role_assignment import InterfaceRoleAssignmentFilterSet
 from .interface_template import InterfaceTemplateFilterSet
@@ -15,6 +16,7 @@ from .profile_config_template import ProfileConfigTemplateFilterSet
 from .role_group import RoleGroupFilterSet
 
 __all__ = (
+    "InterfaceConfigFilterSet",
     "InterfaceRoleAssignmentFilterSet",
     "InterfaceRoleFilterSet",
     "InterfaceTemplateFilterSet",

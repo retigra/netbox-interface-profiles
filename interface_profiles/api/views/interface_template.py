@@ -15,6 +15,8 @@ class InterfaceTemplateViewSet(NetBoxModelViewSet):
     queryset = InterfaceTemplate.objects.select_related(
         "interface_role",
         "scope_type",
+        "vrf",
+        "vlan_translation_policy",
     )
     serializer_class = InterfaceTemplateSerializer
     filterset_class = filtersets.InterfaceTemplateFilterSet

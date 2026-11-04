@@ -12,7 +12,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from extras.models import ConfigTemplate
-from ipam.models import VLAN, VLANGroup
+from ipam.models import VLAN, VRF, VLANGroup, VLANTranslationPolicy
+from utilities.exceptions import AbortRequest
 
 from ..forms import InterfaceTemplateForm, ProfileConfigTemplateForm
 from ..models import InterfaceRole, InterfaceRoleAssignment, InterfaceTemplate, ProfileConfigTemplate, RoleGroup
@@ -152,16 +153,15 @@ class InterfaceTemplateTestCase(PluginModelTestCase):
             mtu=1500,
             mode="access",
             enabled=True,
-            poe_mode="power-supply",
+            poe_mode="pse",
             untagged_vlan_vid=10,
-            tagged_vlans_vids=[20, 30],
         )
 
         self.assertEqual(template.name, "Access Port Template")
         self.assertEqual(template.interface_role, self.role)
         self.assertEqual(template.scope, self.site_group)
         self.assertEqual(template.untagged_vlan_vid, 10)
-        self.assertEqual(template.tagged_vlans_vids, [20, 30])
+        self.assertEqual(template.tagged_vlans_vids, [])
 
     def test_role_device_roles_assignment(self):
         """Test assigning device role scopes to InterfaceRole."""
@@ -241,6 +241,68 @@ class InterfaceTemplateTestCase(PluginModelTestCase):
 
         self.assertEqual(set(context.exception.error_dict), {"set_null_mode"})
 
+    def test_tagged_vlans_require_tagged_mode(self):
+        """NetBox only allows tagged VLANs on interfaces in the tagged mode."""
+        template = InterfaceTemplate(
+            interface_role=self.role,
+            name="Access With Tagged",
+            mode=InterfaceModeChoices.MODE_ACCESS,
+            tagged_vlans_vids=[20],
+        )
+
+        with self.assertRaises(ValidationError) as context:
+            template.full_clean()
+
+        self.assertEqual(set(context.exception.error_dict), {"tagged_vlans_vids"})
+
+    def test_qinq_svlan_requires_qinq_mode(self):
+        """NetBox only allows a service VLAN on Q-in-Q interfaces."""
+        template = InterfaceTemplate(
+            interface_role=self.role,
+            name="Access With SVLAN",
+            mode=InterfaceModeChoices.MODE_ACCESS,
+            qinq_svlan_vid=100,
+        )
+
+        with self.assertRaises(ValidationError) as context:
+            template.full_clean()
+
+        self.assertEqual(set(context.exception.error_dict), {"qinq_svlan_vid"})
+
+    def test_tagged_vlans_vids_must_be_valid_vids(self):
+        template = InterfaceTemplate(interface_role=self.role, name="Invalid VIDs", tagged_vlans_vids=[10, 5000])
+
+        with self.assertRaises(ValidationError) as context:
+            template.full_clean()
+
+        self.assertEqual(set(context.exception.error_dict), {"tagged_vlans_vids"})
+
+    def test_scope_requires_type_and_object(self):
+        template = InterfaceTemplate(
+            interface_role=self.role,
+            name="Half Scoped",
+            scope_id=1,
+        )
+
+        with self.assertRaises(ValidationError) as context:
+            template.full_clean()
+
+        self.assertEqual(set(context.exception.error_dict), {"scope_type"})
+
+    def test_template_form_parses_tagged_vlan_ranges(self):
+        form = InterfaceTemplateForm(
+            data={
+                "interface_role": self.role.pk,
+                "name": "Range Template",
+                "enabled": "on",
+                "mode": InterfaceModeChoices.MODE_TAGGED,
+                "tagged_vlans_vids": "100, 200-202",
+            }
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.save().tagged_vlans_vids, [100, 200, 201, 202])
+
     def test_template_form_stores_blank_choices_as_null(self):
         """Empty choices from the edit form are stored as None, so they leave the interface unchanged."""
         form = InterfaceTemplateForm(
@@ -317,12 +379,12 @@ class InterfaceRoleAssignmentSignalTestCase(PluginModelTestCase):
         """Assigning a role should apply matching template attributes."""
         InterfaceTemplate.objects.create(
             interface_role=self.role,
-            name="Global Access Template",
+            name="Global Tagged Template",
             enabled=True,
             speed=1000,
             duplex="full",
             mtu=9000,
-            mode=InterfaceModeChoices.MODE_ACCESS,
+            mode=InterfaceModeChoices.MODE_TAGGED,
             poe_mode="pse",
             untagged_vlan_vid=10,
             tagged_vlans_vids=[20],
@@ -338,7 +400,7 @@ class InterfaceRoleAssignmentSignalTestCase(PluginModelTestCase):
         self.assertEqual(self.interface.speed, 1000)
         self.assertEqual(self.interface.duplex, "full")
         self.assertEqual(self.interface.mtu, 9000)
-        self.assertEqual(self.interface.mode, InterfaceModeChoices.MODE_ACCESS)
+        self.assertEqual(self.interface.mode, InterfaceModeChoices.MODE_TAGGED)
         self.assertEqual(self.interface.poe_mode, "pse")
         self.assertEqual(self.interface.untagged_vlan_id, self.untagged_vlan.pk)
         self.assertEqual(set(self.interface.tagged_vlans.values_list("pk", flat=True)), {self.tagged_vlan.pk})
@@ -433,6 +495,105 @@ class InterfaceRoleAssignmentSignalTestCase(PluginModelTestCase):
         self.assertIsNone(self.interface.mode)
         self.assertIsNone(self.interface.untagged_vlan)
         self.assertEqual(self.interface.mtu, 9000)
+
+    def test_assignment_applies_general_attributes(self):
+        """Management only, description, PoE type, VRF and VLAN translation policy are applied."""
+        vrf = VRF.objects.create(name="Management", rd="65000:1")
+        policy = VLANTranslationPolicy.objects.create(name="Customer A")
+        InterfaceTemplate.objects.create(
+            interface_role=self.role,
+            name="General Template",
+            mgmt_only=True,
+            interface_description="Workstation",
+            poe_mode="pse",
+            poe_type="type2-ieee802.3at",
+            vrf=vrf,
+            vlan_translation_policy=policy,
+        )
+
+        InterfaceRoleAssignment.objects.create(interface=self.interface, interface_role=self.role)
+
+        self.interface.refresh_from_db()
+        self.assertTrue(self.interface.mgmt_only)
+        self.assertEqual(self.interface.description, "Workstation")
+        self.assertEqual(self.interface.poe_type, "type2-ieee802.3at")
+        self.assertEqual(self.interface.vrf, vrf)
+        self.assertEqual(self.interface.vlan_translation_policy, policy)
+
+    def test_assignment_leaves_empty_general_attributes_unchanged(self):
+        """An empty management only and description leave the interface unchanged."""
+        vrf = VRF.objects.create(name="Unchanged", rd="65000:2")
+        self.interface.mgmt_only = True
+        self.interface.description = "Keep me"
+        self.interface.vrf = vrf
+        self.interface.save()
+        InterfaceTemplate.objects.create(interface_role=self.role, name="Empty Template", enabled=True)
+
+        InterfaceRoleAssignment.objects.create(interface=self.interface, interface_role=self.role)
+
+        self.interface.refresh_from_db()
+        self.assertTrue(self.interface.mgmt_only)
+        self.assertEqual(self.interface.description, "Keep me")
+        self.assertEqual(self.interface.vrf, vrf)
+
+    def test_assignment_clears_description_and_vrf(self):
+        """Clearing the description sets it to an empty string, as interface descriptions are not nullable."""
+        self.interface.description = "Old"
+        self.interface.vrf = VRF.objects.create(name="Old", rd="65000:3")
+        self.interface.save()
+        InterfaceTemplate.objects.create(
+            interface_role=self.role,
+            name="Clearing Template",
+            set_null_interface_description=True,
+            set_null_vrf=True,
+        )
+
+        InterfaceRoleAssignment.objects.create(interface=self.interface, interface_role=self.role)
+
+        self.interface.refresh_from_db()
+        self.assertEqual(self.interface.description, "")
+        self.assertIsNone(self.interface.vrf)
+
+    def test_assignment_applies_qinq_svlan(self):
+        """The service VLAN resolves to an S-VLAN with the VID, not to a regular VLAN with the same VID."""
+        VLAN.objects.create(name="Regular-30", vid=30, site=self.site)
+        svlan = VLAN.objects.create(name="SVLAN-30", vid=30, group=self.site_vlan_group, qinq_role="svlan")
+        InterfaceTemplate.objects.create(
+            interface_role=self.role,
+            name="QinQ Template",
+            mode=InterfaceModeChoices.MODE_Q_IN_Q,
+            qinq_svlan_vid=30,
+        )
+
+        InterfaceRoleAssignment.objects.create(interface=self.interface, interface_role=self.role)
+
+        self.interface.refresh_from_db()
+        self.assertEqual(self.interface.mode, InterfaceModeChoices.MODE_Q_IN_Q)
+        self.assertEqual(self.interface.qinq_svlan, svlan)
+
+    def test_mode_change_clears_qinq_svlan(self):
+        """Leaving the Q-in-Q mode removes the service VLAN, which NetBox only allows on Q-in-Q interfaces."""
+        svlan = VLAN.objects.create(name="SVLAN-40", vid=40, group=self.site_vlan_group, qinq_role="svlan")
+        self.interface.mode = InterfaceModeChoices.MODE_Q_IN_Q
+        self.interface.qinq_svlan = svlan
+        self.interface.save()
+        InterfaceTemplate.objects.create(
+            interface_role=self.role, name="Access Template", mode=InterfaceModeChoices.MODE_ACCESS
+        )
+
+        InterfaceRoleAssignment.objects.create(interface=self.interface, interface_role=self.role)
+
+        self.interface.refresh_from_db()
+        self.assertEqual(self.interface.mode, InterfaceModeChoices.MODE_ACCESS)
+        self.assertIsNone(self.interface.qinq_svlan)
+
+    def test_tagged_vlans_on_non_tagged_interface_are_rejected(self):
+        """A template without a mode cannot add tagged VLANs to an interface that is not in the tagged mode."""
+        self._configure_interface()
+        InterfaceTemplate.objects.create(interface_role=self.role, name="Tagged Only", tagged_vlans_vids=[20])
+
+        with self.assertRaises(AbortRequest):
+            InterfaceRoleAssignment.objects.create(interface=self.interface, interface_role=self.role)
 
 
 class RoleGroupTestCase(PluginModelTestCase):

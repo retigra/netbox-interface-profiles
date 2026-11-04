@@ -11,6 +11,7 @@ https://www.django-rest-framework.org/api-guide/routers/
 from netbox.api.routers import NetBoxRouter
 
 from .views import (
+    InterfaceConfigViewSet,
     InterfaceRoleAssignmentViewSet,
     InterfaceRoleViewSet,
     InterfaceTemplateViewSet,
@@ -26,5 +27,6 @@ router.register("interface-roles", InterfaceRoleViewSet)
 router.register("interface-role-assignments", InterfaceRoleAssignmentViewSet)
 router.register("interface-templates", InterfaceTemplateViewSet)
 router.register("profile-config-templates", ProfileConfigTemplateViewSet)
+router.register("interface-configs", InterfaceConfigViewSet, basename="interfaceconfig")
 
 urlpatterns = router.urls

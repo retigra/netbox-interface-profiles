@@ -2,33 +2,61 @@
 InterfaceTemplate model for interface profiles.
 """
 
-from typing import cast
+from typing import Any, cast
 
+from dcim.choices import InterfaceDuplexChoices, InterfaceModeChoices, InterfacePoEModeChoices, InterfacePoETypeChoices
+from dcim.constants import INTERFACE_MTU_MAX, INTERFACE_MTU_MIN
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.urls import reverse
+from ipam.constants import VLAN_VID_MAX, VLAN_VID_MIN
 from netbox.models import NetBoxModel
+
+# Template fields applied to the interface, mapped to the interface field they set. VLANs are resolved separately.
+TEMPLATE_INTERFACE_FIELDS = {
+    "enabled": "enabled",
+    "mgmt_only": "mgmt_only",
+    "interface_description": "description",
+    "speed": "speed",
+    "duplex": "duplex",
+    "mtu": "mtu",
+    "mode": "mode",
+    "poe_mode": "poe_mode",
+    "poe_type": "poe_type",
+    "vrf": "vrf",
+    "vlan_translation_policy": "vlan_translation_policy",
+}
 
 # Template fields that are skipped by synchronization when empty, unless their set_null_<field> flag is enabled
 NULLABLE_TEMPLATE_FIELDS = (
+    "interface_description",
     "speed",
     "duplex",
     "mtu",
     "mode",
     "poe_mode",
+    "poe_type",
+    "vrf",
+    "vlan_translation_policy",
     "untagged_vlan_vid",
+    "qinq_svlan_vid",
 )
+
+VID_VALIDATORS = (MinValueValidator(VLAN_VID_MIN), MaxValueValidator(VLAN_VID_MAX))
+
+
+def _set_null_field(verbose_name: str, help_text: str):
+    return models.BooleanField(default=False, verbose_name=verbose_name, help_text=help_text)
 
 
 class InterfaceTemplate(NetBoxModel):
     """
-    An interface template that supports various NetBox interface attributes,
-    scoped optionally to a SiteGroup. VLANs are referenced by VID to enable
-    reusability across different sites with different VLAN objects but similar VIDs.
+    The interface attributes an InterfaceRole applies, globally or scoped to a Site or SiteGroup.
 
-    This model enables templating of interface configurations that can be
-    applied to multiple interfaces within a site/site group context.
+    Empty attributes leave the interface unchanged, unless their set_null_<field> flag is enabled. VLANs are
+    referenced by VID, so one template works in every site even though each site has its own VLAN objects.
     """
 
     # Configuration scope
@@ -45,95 +73,129 @@ class InterfaceTemplate(NetBoxModel):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
 
-    # Interface attributes - Physical
-    speed = models.PositiveIntegerField(
+    # Interface attributes - General
+    enabled = models.BooleanField(
+        default=True,
+        help_text="Whether the interface is enabled. Always applied.",
+    )
+    mgmt_only = models.BooleanField(
         null=True,
         blank=True,
-        help_text="Interface speed in Mbps (e.g., 1000, 10000)",
+        verbose_name="Management only",
+        help_text="Whether the interface is used only for out-of-band management. Empty leaves it unchanged.",
+    )
+    interface_description = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name="Interface description",
+        help_text="Description set on the interface",
+    )
+
+    # Interface attributes - Physical
+    speed = models.PositiveBigIntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Speed (Kbps)",
     )
     duplex = models.CharField(
-        max_length=10,
-        choices=(
-            ("auto", "Auto"),
-            ("half", "Half"),
-            ("full", "Full"),
-        ),
+        max_length=50,
+        choices=InterfaceDuplexChoices,
         null=True,
         blank=True,
     )
     mtu = models.PositiveIntegerField(
         null=True,
         blank=True,
-        help_text="Maximum transmission unit in bytes",
+        validators=[MinValueValidator(INTERFACE_MTU_MIN), MaxValueValidator(INTERFACE_MTU_MAX)],
+        verbose_name="MTU",
     )
 
-    # Interface attributes - L2
-    mode = models.CharField(
-        max_length=20,
-        choices=(
-            ("access", "Access"),
-            ("tagged", "Tagged"),
-            ("tagged-all", "Tagged All"),
-        ),
-        null=True,
-        blank=True,
-        help_text="Interface mode (access/tagged/tagged-all)",
-    )
-
-    # Interface attributes - Status & Other
-    enabled = models.BooleanField(
-        default=True,
-        help_text="Whether the interface is enabled by default",
-    )
+    # Interface attributes - PoE
     poe_mode = models.CharField(
         max_length=50,
+        choices=InterfacePoEModeChoices,
         null=True,
         blank=True,
-        help_text="POE mode (power-supply, power-device, etc.)",
+        verbose_name="PoE mode",
+    )
+    poe_type = models.CharField(
+        max_length=50,
+        choices=InterfacePoETypeChoices,
+        null=True,
+        blank=True,
+        verbose_name="PoE type",
     )
 
-    # VLAN references (by VID for cross-site reusability)
-    untagged_vlan_vid = models.PositiveIntegerField(
+    # Interface attributes - Addressing
+    vrf = models.ForeignKey(
+        to="ipam.VRF",
+        on_delete=models.PROTECT,
+        related_name="+",
         null=True,
         blank=True,
-        help_text="Untagged VLAN ID (VID). Will be resolved to actual VLAN in target site.",
+        verbose_name="VRF",
+    )
+
+    # Interface attributes - 802.1Q switching
+    mode = models.CharField(
+        max_length=50,
+        choices=InterfaceModeChoices,
+        null=True,
+        blank=True,
+        verbose_name="802.1Q mode",
+    )
+    # VLANs are referenced by VID for cross-site reusability
+    untagged_vlan_vid = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=VID_VALIDATORS,
+        verbose_name="Untagged VLAN VID",
+        help_text="Resolved to the VLAN with this VID in the site of the interface.",
     )
     tagged_vlans_vids = models.JSONField(
         default=list,
         blank=True,
-        help_text="List of tagged VLAN IDs (VIDs) as JSON array. Will be resolved to actual VLANs in target site.",
+        verbose_name="Tagged VLAN VIDs",
+        help_text="Resolved to the VLANs with these VIDs in the site of the interface. Requires the tagged mode.",
+    )
+    qinq_svlan_vid = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=VID_VALIDATORS,
+        verbose_name="Q-in-Q SVLAN VID",
+        help_text="Resolved to the service VLAN with this VID in the site of the interface. Requires the Q-in-Q mode.",
+    )
+    vlan_translation_policy = models.ForeignKey(
+        to="ipam.VLANTranslationPolicy",
+        on_delete=models.PROTECT,
+        related_name="+",
+        null=True,
+        blank=True,
+        verbose_name="VLAN translation policy",
     )
 
     # Explicitly clear interface attributes, as an empty value leaves the interface unchanged
-    set_null_speed = models.BooleanField(
-        default=False,
-        verbose_name="Clear speed",
-        help_text="Clear the interface speed when no speed is set",
+    set_null_interface_description = _set_null_field(
+        "Clear interface description", "Clear the interface description when no interface description is set"
     )
-    set_null_duplex = models.BooleanField(
-        default=False,
-        verbose_name="Clear duplex",
-        help_text="Clear the interface duplex when no duplex is set",
+    set_null_speed = _set_null_field("Clear speed", "Clear the interface speed when no speed is set")
+    set_null_duplex = _set_null_field("Clear duplex", "Clear the interface duplex when no duplex is set")
+    set_null_mtu = _set_null_field("Clear MTU", "Clear the interface MTU when no MTU is set")
+    set_null_mode = _set_null_field(
+        "Clear mode", "Clear the interface mode when no mode is set. This also removes all VLAN assignments."
     )
-    set_null_mtu = models.BooleanField(
-        default=False,
-        verbose_name="Clear MTU",
-        help_text="Clear the interface MTU when no MTU is set",
+    set_null_poe_mode = _set_null_field("Clear PoE mode", "Clear the interface PoE mode when no PoE mode is set")
+    set_null_poe_type = _set_null_field("Clear PoE type", "Clear the interface PoE type when no PoE type is set")
+    set_null_vrf = _set_null_field("Clear VRF", "Clear the interface VRF when no VRF is set")
+    set_null_vlan_translation_policy = _set_null_field(
+        "Clear VLAN translation policy",
+        "Clear the interface VLAN translation policy when no VLAN translation policy is set",
     )
-    set_null_mode = models.BooleanField(
-        default=False,
-        verbose_name="Clear mode",
-        help_text="Clear the interface mode when no mode is set. This also removes all VLAN assignments.",
+    set_null_untagged_vlan_vid = _set_null_field(
+        "Clear untagged VLAN", "Clear the interface untagged VLAN when no untagged VLAN VID is set"
     )
-    set_null_poe_mode = models.BooleanField(
-        default=False,
-        verbose_name="Clear POE mode",
-        help_text="Clear the interface POE mode when no POE mode is set",
-    )
-    set_null_untagged_vlan_vid = models.BooleanField(
-        default=False,
-        verbose_name="Clear untagged VLAN",
-        help_text="Clear the interface untagged VLAN when no untagged VLAN VID is set",
+    set_null_qinq_svlan_vid = _set_null_field(
+        "Clear Q-in-Q SVLAN", "Clear the interface Q-in-Q service VLAN when no SVLAN VID is set"
     )
 
     class Meta:
@@ -156,15 +218,34 @@ class InterfaceTemplate(NetBoxModel):
     def clean(self):
         super().clean()
 
-        errors = {
-            f"set_null_{field}": "Remove the value to clear this attribute."
-            for field in NULLABLE_TEMPLATE_FIELDS
-            if getattr(self, f"set_null_{field}") and getattr(self, field) not in (None, "")
-        }
-        if self.set_null_mode and (self.untagged_vlan_vid is not None or self.tagged_vlans_vids):
+        errors: dict[str, str] = {}
+
+        # NetBox validates a scope type without a scope, but not the other way around
+        if self.scope_id is not None and self.scope_type is None:
+            errors["scope_type"] = "Set the type of the scope, or no scope for a global template."
+
+        vids = self.tagged_vlans_vids
+        if not isinstance(vids, list) or not all(
+            isinstance(vid, int) and VLAN_VID_MIN <= vid <= VLAN_VID_MAX for vid in vids
+        ):
+            errors["tagged_vlans_vids"] = f"Enter a list of VIDs between {VLAN_VID_MIN} and {VLAN_VID_MAX}."
+
+        for field in NULLABLE_TEMPLATE_FIELDS:
+            if getattr(self, f"set_null_{field}") and self._has_value(field):
+                errors[f"set_null_{field}"] = "Remove the value to clear this attribute."
+
+        if self.set_null_mode and (self.untagged_vlan_vid is not None or self.tagged_vlans_vids or self.qinq_svlan_vid):
             errors.setdefault("set_null_mode", "VLANs cannot be assigned to an interface without a mode.")
+        if self.mode and self.mode != InterfaceModeChoices.MODE_TAGGED and self.tagged_vlans_vids:
+            errors.setdefault("tagged_vlans_vids", "Tagged VLANs can only be assigned in the tagged mode.")
+        if self.mode and self.mode != InterfaceModeChoices.MODE_Q_IN_Q and self.qinq_svlan_vid is not None:
+            errors.setdefault("qinq_svlan_vid", "A service VLAN can only be assigned in the Q-in-Q mode.")
+
         if errors:
             raise ValidationError(errors)
+
+    def _has_value(self, field: str) -> bool:
+        return getattr(self, cast(Any, self)._meta.get_field(field).attname) not in (None, "")
 
     def is_set_null(self, field: str) -> bool:
         """Return whether synchronization should clear the interface attribute for an empty template field."""
@@ -181,3 +262,15 @@ class InterfaceTemplate(NetBoxModel):
         from ..utils import resolve_vlans_by_vids
 
         return resolve_vlans_by_vids(site=site, vids=cast(list[int], self.tagged_vlans_vids))
+
+    def resolve_qinq_svlan(self, site):
+        """Resolve the Q-in-Q service VLAN object for the provided site using the stored VID."""
+        from ipam.choices import VLANQinQRoleChoices
+
+        from ..utils import resolve_vlan_by_vid
+
+        return resolve_vlan_by_vid(
+            site=site,
+            vid=cast(int | None, self.qinq_svlan_vid),
+            qinq_role=VLANQinQRoleChoices.ROLE_SERVICE,
+        )

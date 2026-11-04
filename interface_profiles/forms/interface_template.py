@@ -2,26 +2,120 @@
 InterfaceTemplate forms for interface profiles.
 """
 
+from dcim.choices import (
+    InterfaceDuplexChoices,
+    InterfaceModeChoices,
+    InterfacePoEModeChoices,
+    InterfacePoETypeChoices,
+    InterfaceSpeedChoices,
+)
+from dcim.constants import INTERFACE_MTU_MAX, INTERFACE_MTU_MIN
 from dcim.models import Site, SiteGroup
 from django import forms
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils.translation import gettext_lazy as _
+from ipam.constants import VLAN_VID_MAX, VLAN_VID_MIN
+from ipam.models import VRF, VLANTranslationPolicy
 from netbox.forms import (
     NetBoxModelBulkEditForm,
     NetBoxModelFilterSetForm,
     NetBoxModelForm,
     NetBoxModelImportForm,
 )
-from utilities.forms import get_field_value
-from utilities.forms.fields import ContentTypeChoiceField, DynamicModelChoiceField, DynamicModelMultipleChoiceField
+from utilities.forms import add_blank_choice, get_field_value
+from utilities.forms.fields import (
+    ContentTypeChoiceField,
+    CSVChoiceField,
+    CSVContentTypeField,
+    CSVModelChoiceField,
+    DynamicModelChoiceField,
+    DynamicModelMultipleChoiceField,
+    PositiveBigIntegerField,
+)
 from utilities.forms.rendering import FieldSet
-from utilities.forms.widgets import BulkEditNullBooleanSelect, HTMXSelect
+from utilities.forms.utils import parse_numeric_range
+from utilities.forms.widgets import BulkEditNullBooleanSelect, HTMXSelect, NumberWithOptions
 from utilities.templatetags.builtins.filters import bettertitle
 
 from ..models import InterfaceRole, InterfaceTemplate
 
 INTERFACE_TEMPLATE_SCOPE_TYPES = ("site", "sitegroup")
+
+# Interface attribute fields shared by the edit and import forms, in display order
+ATTRIBUTE_FIELDS = (
+    "enabled",
+    "mgmt_only",
+    "interface_description",
+    "set_null_interface_description",
+    "speed",
+    "set_null_speed",
+    "duplex",
+    "set_null_duplex",
+    "mtu",
+    "set_null_mtu",
+    "vrf",
+    "set_null_vrf",
+    "mode",
+    "set_null_mode",
+    "untagged_vlan_vid",
+    "set_null_untagged_vlan_vid",
+    "tagged_vlans_vids",
+    "qinq_svlan_vid",
+    "set_null_qinq_svlan_vid",
+    "vlan_translation_policy",
+    "set_null_vlan_translation_policy",
+    "poe_mode",
+    "set_null_poe_mode",
+    "poe_type",
+    "set_null_poe_type",
+)
+
+
+def _scope_type_queryset():
+    return ContentType.objects.filter(app_label="dcim", model__in=INTERFACE_TEMPLATE_SCOPE_TYPES)
+
+
+def _enable_scope_field(form: forms.Form) -> None:
+    """Limit the scope field to objects of the selected scope type."""
+    if scope_type_id := get_field_value(form, "scope_type"):
+        try:
+            scope_type = ContentType.objects.get(pk=scope_type_id)
+        except (ObjectDoesNotExist, ValueError):
+            return
+        model = scope_type.model_class()
+        field = form.fields["scope"]
+        field.queryset = model.objects.all()
+        field.widget.attrs["selector"] = model._meta.label_lower
+        field.disabled = False
+        field.label = _(bettertitle(model._meta.verbose_name))
+
+
+class UnchangedNullBooleanSelect(forms.NullBooleanSelect):
+    """A yes/no select whose empty option leaves the interface attribute unchanged."""
+
+    def __init__(self, attrs=None):
+        super().__init__(attrs)
+        self.choices = (("unknown", "———"), ("true", _("Yes")), ("false", _("No")))
+
+
+class TaggedVLANVIDsField(forms.CharField):
+    """A list of VIDs entered as comma-separated numbers and ranges, e.g. `100,200-205`."""
+
+    def __init__(self, **kwargs):
+        kwargs.setdefault("help_text", _("Comma-separated VIDs and ranges, e.g. 100,200-205"))
+        super().__init__(**kwargs)
+
+    def prepare_value(self, value):
+        if isinstance(value, list):
+            return ",".join(str(vid) for vid in value)
+        return value
+
+    def to_python(self, value):
+        value = super().to_python(value).strip()
+        if not value:
+            return []
+        return parse_numeric_range(value, min_value=VLAN_VID_MIN, max_value=VLAN_VID_MAX)
 
 
 class InterfaceTemplateForm(NetBoxModelForm):
@@ -32,7 +126,7 @@ class InterfaceTemplateForm(NetBoxModelForm):
         label=_("Interface Role"),
     )
     scope_type = ContentTypeChoiceField(
-        queryset=ContentType.objects.filter(app_label="dcim", model__in=INTERFACE_TEMPLATE_SCOPE_TYPES),
+        queryset=_scope_type_queryset(),
         widget=HTMXSelect(),
         required=False,
         label=_("Scope type"),
@@ -44,73 +138,63 @@ class InterfaceTemplateForm(NetBoxModelForm):
         disabled=True,
         selector=True,
     )
-
-    # Speed, duplex, MTU
-    speed = forms.IntegerField(
+    mgmt_only = forms.NullBooleanField(
         required=False,
-        min_value=0,
-        label=_("Speed (Mbps)"),
-        help_text=_("Interface speed in megabits per second (e.g., 1000, 10000)"),
+        widget=UnchangedNullBooleanSelect(),
+        label=_("Management only"),
+        help_text=_("Empty leaves the interface unchanged"),
+    )
+    speed = PositiveBigIntegerField(
+        required=False,
+        widget=NumberWithOptions(options=InterfaceSpeedChoices),
+        label=_("Speed (Kbps)"),
     )
     duplex = forms.TypedChoiceField(
-        choices=[("", "———"), ("auto", "Auto"), ("half", "Half"), ("full", "Full")],
+        choices=add_blank_choice(InterfaceDuplexChoices),
         required=False,
         empty_value=None,
         label=_("Duplex"),
     )
-    mtu = forms.IntegerField(
-        required=False,
-        min_value=0,
-        label=_("MTU"),
-        help_text=_("Maximum transmission unit in bytes"),
-    )
-
-    # Mode
     mode = forms.TypedChoiceField(
-        choices=[
-            ("", "———"),
-            ("access", "Access"),
-            ("tagged", "Tagged"),
-            ("tagged-all", "Tagged All"),
-        ],
+        choices=add_blank_choice(InterfaceModeChoices),
         required=False,
         empty_value=None,
-        label=_("Mode"),
-        help_text=_("Interface mode (access/tagged/tagged-all)"),
+        label=_("802.1Q mode"),
     )
-
-    # Enabled & POE
-    enabled = forms.BooleanField(
-        required=False,
-        label=_("Enabled"),
-        help_text=_("Whether the interface is enabled by default"),
-    )
-    poe_mode = forms.CharField(
-        max_length=50,
+    poe_mode = forms.TypedChoiceField(
+        choices=add_blank_choice(InterfacePoEModeChoices),
         required=False,
         empty_value=None,
-        label=_("POE Mode"),
-        help_text=_("POE mode (power-supply, power-device, etc.)"),
+        label=_("PoE mode"),
     )
-
-    # VLAN references
-    untagged_vlan_vid = forms.IntegerField(
+    poe_type = forms.TypedChoiceField(
+        choices=add_blank_choice(InterfacePoETypeChoices),
         required=False,
-        min_value=0,
-        max_value=4094,
-        label=_("Untagged VLAN VID"),
-        help_text=_("Untagged VLAN ID. Will be resolved to actual VLAN in target site."),
+        empty_value=None,
+        label=_("PoE type"),
     )
-    tagged_vlans_vids = forms.CharField(
+    vrf = DynamicModelChoiceField(
+        queryset=VRF.objects.all(),
         required=False,
-        label=_("Tagged VLAN VIDs"),
-        help_text=_("Comma-separated list of tagged VLAN IDs (e.g., 100,200,300)"),
-        widget=forms.Textarea(attrs={"rows": 3}),
+        label=_("VRF"),
     )
+    vlan_translation_policy = DynamicModelChoiceField(
+        queryset=VLANTranslationPolicy.objects.all(),
+        required=False,
+        label=_("VLAN translation policy"),
+    )
+    tagged_vlans_vids = TaggedVLANVIDsField(required=False, label=_("Tagged VLAN VIDs"))
 
     fieldsets = (
         FieldSet("interface_role", "scope_type", "scope", name=_("Scope")),
-        FieldSet("name", "description", "tags", name=_("Basic Information")),
+        FieldSet("name", "description", "tags", name=_("Interface Template")),
+        FieldSet(
+            "enabled",
+            "mgmt_only",
+            "interface_description",
+            "set_null_interface_description",
+            name=_("General"),
+        ),
         FieldSet(
             "speed",
             "set_null_speed",
@@ -118,42 +202,27 @@ class InterfaceTemplateForm(NetBoxModelForm):
             "set_null_duplex",
             "mtu",
             "set_null_mtu",
-            "enabled",
-            name=_("Physical Configuration"),
+            name=_("Physical"),
         ),
-        FieldSet("mode", "set_null_mode", name=_("Layer 2 Configuration")),
+        FieldSet("vrf", "set_null_vrf", name=_("Addressing")),
         FieldSet(
+            "mode",
+            "set_null_mode",
             "untagged_vlan_vid",
             "set_null_untagged_vlan_vid",
             "tagged_vlans_vids",
-            name=_("VLAN Configuration"),
+            "qinq_svlan_vid",
+            "set_null_qinq_svlan_vid",
+            "vlan_translation_policy",
+            "set_null_vlan_translation_policy",
+            name=_("802.1Q Switching"),
         ),
-        FieldSet("poe_mode", "set_null_poe_mode", name=_("POE Configuration")),
+        FieldSet("poe_mode", "set_null_poe_mode", "poe_type", "set_null_poe_type", name=_("Power over Ethernet")),
     )
 
     class Meta:
         model = InterfaceTemplate
-        fields = (
-            "name",
-            "description",
-            "interface_role",
-            "scope_type",
-            "speed",
-            "duplex",
-            "mtu",
-            "mode",
-            "enabled",
-            "poe_mode",
-            "untagged_vlan_vid",
-            "tagged_vlans_vids",
-            "set_null_speed",
-            "set_null_duplex",
-            "set_null_mtu",
-            "set_null_mode",
-            "set_null_poe_mode",
-            "set_null_untagged_vlan_vid",
-            "tags",
-        )
+        fields = ("interface_role", "scope_type", "name", "description", *ATTRIBUTE_FIELDS, "tags")
 
     def __init__(self, *args, **kwargs):
         instance = kwargs.get("instance")
@@ -165,78 +234,64 @@ class InterfaceTemplateForm(NetBoxModelForm):
 
         super().__init__(*args, **kwargs)
 
-        tagged_vlans = self.initial.get("tagged_vlans_vids")
-        if isinstance(tagged_vlans, list):
-            self.initial["tagged_vlans_vids"] = ",".join(str(vid) for vid in tagged_vlans)
-
-        if scope_type_id := get_field_value(self, "scope_type"):
-            try:
-                scope_type = ContentType.objects.get(pk=scope_type_id)
-                model = scope_type.model_class()
-                self.fields["scope"].queryset = model.objects.all()
-                self.fields["scope"].widget.attrs["selector"] = model._meta.label_lower
-                self.fields["scope"].disabled = False
-                self.fields["scope"].label = _(bettertitle(model._meta.verbose_name))
-            except ObjectDoesNotExist:
-                pass
-
-            if self.instance and scope_type_id != self.instance.scope_type_id:
-                self.initial["scope"] = None
+        _enable_scope_field(self)
+        if self.instance and get_field_value(self, "scope_type") != self.instance.scope_type_id:
+            self.initial["scope"] = None
 
     def clean(self):
         super().clean()
         self.instance.scope = self.cleaned_data.get("scope")
 
-    def clean_tagged_vlans_vids(self):
-        """Convert comma-separated VIDs string to JSON list."""
-        data = self.cleaned_data.get("tagged_vlans_vids", "").strip()
-        if not data:
-            return []
-        try:
-            vids = [int(vid.strip()) for vid in data.split(",") if vid.strip()]
-            for vid in vids:
-                if not (0 <= vid <= 4094):
-                    raise forms.ValidationError(
-                        _("VLAN VID must be between 0 and 4094. Got: %(value)s"),
-                        code="invalid_vlan_vid",
-                        params={"value": vid},
-                    )
-            return vids
-        except ValueError as exc:
-            raise forms.ValidationError(
-                _("Tagged VLAN VIDs must be comma-separated integers."),
-                code="invalid_format",
-            ) from exc
-
-    def clean_enabled(self):
-        """Ensure enabled is always a boolean."""
-        return self.cleaned_data.get("enabled", True)
-
 
 class InterfaceTemplateImportForm(NetBoxModelImportForm):
-    """CSV import form for InterfaceTemplate."""
+    """CSV/YAML/JSON import form for InterfaceTemplate."""
+
+    interface_role = CSVModelChoiceField(
+        queryset=InterfaceRole.objects.all(),
+        to_field_name="name",
+        label=_("Interface role"),
+        help_text=_("Name of the interface role"),
+    )
+    scope_type = CSVContentTypeField(
+        queryset=_scope_type_queryset(),
+        required=False,
+        label=_("Scope type"),
+        help_text=_("dcim.site or dcim.sitegroup. Leave empty for a global template."),
+    )
+    duplex = CSVChoiceField(choices=InterfaceDuplexChoices, required=False, label=_("Duplex"))
+    mode = CSVChoiceField(choices=InterfaceModeChoices, required=False, label=_("802.1Q mode"))
+    poe_mode = CSVChoiceField(choices=InterfacePoEModeChoices, required=False, label=_("PoE mode"))
+    poe_type = CSVChoiceField(choices=InterfacePoETypeChoices, required=False, label=_("PoE type"))
+    vrf = CSVModelChoiceField(
+        queryset=VRF.objects.all(),
+        required=False,
+        to_field_name="rd",
+        label=_("VRF"),
+        help_text=_("Route distinguisher of the VRF"),
+    )
+    vlan_translation_policy = CSVModelChoiceField(
+        queryset=VLANTranslationPolicy.objects.all(),
+        required=False,
+        to_field_name="name",
+        label=_("VLAN translation policy"),
+    )
+    tagged_vlans_vids = TaggedVLANVIDsField(required=False, label=_("Tagged VLAN VIDs"))
 
     class Meta:
         model = InterfaceTemplate
-        fields = (
-            "name",
-            "description",
-            "interface_role",
-            "speed",
-            "duplex",
-            "mtu",
-            "mode",
-            "enabled",
-            "poe_mode",
-            "untagged_vlan_vid",
-            "tagged_vlans_vids",
-            "set_null_speed",
-            "set_null_duplex",
-            "set_null_mtu",
-            "set_null_mode",
-            "set_null_poe_mode",
-            "set_null_untagged_vlan_vid",
-        )
+        fields = ("interface_role", "scope_type", "scope_id", "name", "description", *ATTRIBUTE_FIELDS, "tags")
+
+    def clean_duplex(self):
+        return self.cleaned_data["duplex"] or None
+
+    def clean_mode(self):
+        return self.cleaned_data["mode"] or None
+
+    def clean_poe_mode(self):
+        return self.cleaned_data["poe_mode"] or None
+
+    def clean_poe_type(self):
+        return self.cleaned_data["poe_type"] or None
 
 
 class InterfaceTemplateBulkEditForm(NetBoxModelBulkEditForm):
@@ -254,7 +309,7 @@ class InterfaceTemplateBulkEditForm(NetBoxModelBulkEditForm):
         label=_("Interface Role"),
     )
     scope_type = ContentTypeChoiceField(
-        queryset=ContentType.objects.filter(app_label="dcim", model__in=INTERFACE_TEMPLATE_SCOPE_TYPES),
+        queryset=_scope_type_queryset(),
         widget=HTMXSelect(method="post", attrs={"hx-select": "#form_fields"}),
         required=False,
         label=_("Scope type"),
@@ -266,59 +321,98 @@ class InterfaceTemplateBulkEditForm(NetBoxModelBulkEditForm):
         disabled=True,
         selector=True,
     )
-    speed = forms.IntegerField(required=False, min_value=0, label=_("Speed (Mbps)"))
-    duplex = forms.ChoiceField(
-        choices=[("", "———"), ("auto", "Auto"), ("half", "Half"), ("full", "Full")],
+    description = forms.CharField(required=False, label=_("Description"))
+    enabled = forms.NullBooleanField(required=False, widget=BulkEditNullBooleanSelect(), label=_("Enabled"))
+    mgmt_only = forms.NullBooleanField(required=False, widget=BulkEditNullBooleanSelect(), label=_("Management only"))
+    interface_description = forms.CharField(max_length=200, required=False, label=_("Interface description"))
+    speed = PositiveBigIntegerField(
         required=False,
-        label=_("Duplex"),
+        widget=NumberWithOptions(options=InterfaceSpeedChoices),
+        label=_("Speed (Kbps)"),
     )
-    mtu = forms.IntegerField(required=False, min_value=0, label=_("MTU"))
-    mode = forms.ChoiceField(
-        choices=[
-            ("", "———"),
-            ("access", "Access"),
-            ("tagged", "Tagged"),
-            ("tagged-all", "Tagged All"),
-        ],
-        required=False,
-        label=_("Mode"),
+    duplex = forms.ChoiceField(choices=add_blank_choice(InterfaceDuplexChoices), required=False, label=_("Duplex"))
+    mtu = forms.IntegerField(required=False, min_value=INTERFACE_MTU_MIN, max_value=INTERFACE_MTU_MAX, label=_("MTU"))
+    vrf = DynamicModelChoiceField(queryset=VRF.objects.all(), required=False, label=_("VRF"))
+    mode = forms.ChoiceField(choices=add_blank_choice(InterfaceModeChoices), required=False, label=_("802.1Q mode"))
+    untagged_vlan_vid = forms.IntegerField(
+        required=False, min_value=VLAN_VID_MIN, max_value=VLAN_VID_MAX, label=_("Untagged VLAN VID")
     )
-    enabled = forms.NullBooleanField(
-        required=False,
-        label=_("Enabled"),
-        widget=forms.Select(choices=[("", "———"), (True, "Yes"), (False, "No")]),
+    tagged_vlans_vids = TaggedVLANVIDsField(required=False, label=_("Tagged VLAN VIDs"))
+    qinq_svlan_vid = forms.IntegerField(
+        required=False, min_value=VLAN_VID_MIN, max_value=VLAN_VID_MAX, label=_("Q-in-Q SVLAN VID")
     )
-    poe_mode = forms.CharField(max_length=50, required=False, label=_("POE Mode"))
-    description = forms.CharField(max_length=200, required=False)
-    set_null_speed = forms.NullBooleanField(required=False, label=_("Clear speed"), widget=BulkEditNullBooleanSelect())
+    vlan_translation_policy = DynamicModelChoiceField(
+        queryset=VLANTranslationPolicy.objects.all(), required=False, label=_("VLAN translation policy")
+    )
+    poe_mode = forms.ChoiceField(choices=add_blank_choice(InterfacePoEModeChoices), required=False, label=_("PoE mode"))
+    poe_type = forms.ChoiceField(choices=add_blank_choice(InterfacePoETypeChoices), required=False, label=_("PoE type"))
+
+    set_null_interface_description = forms.NullBooleanField(
+        required=False, widget=BulkEditNullBooleanSelect(), label=_("Clear interface description")
+    )
+    set_null_speed = forms.NullBooleanField(required=False, widget=BulkEditNullBooleanSelect(), label=_("Clear speed"))
     set_null_duplex = forms.NullBooleanField(
-        required=False, label=_("Clear duplex"), widget=BulkEditNullBooleanSelect()
+        required=False, widget=BulkEditNullBooleanSelect(), label=_("Clear duplex")
     )
-    set_null_mtu = forms.NullBooleanField(required=False, label=_("Clear MTU"), widget=BulkEditNullBooleanSelect())
-    set_null_mode = forms.NullBooleanField(required=False, label=_("Clear mode"), widget=BulkEditNullBooleanSelect())
-    set_null_poe_mode = forms.NullBooleanField(
-        required=False, label=_("Clear POE mode"), widget=BulkEditNullBooleanSelect()
-    )
+    set_null_mtu = forms.NullBooleanField(required=False, widget=BulkEditNullBooleanSelect(), label=_("Clear MTU"))
+    set_null_vrf = forms.NullBooleanField(required=False, widget=BulkEditNullBooleanSelect(), label=_("Clear VRF"))
+    set_null_mode = forms.NullBooleanField(required=False, widget=BulkEditNullBooleanSelect(), label=_("Clear mode"))
     set_null_untagged_vlan_vid = forms.NullBooleanField(
-        required=False, label=_("Clear untagged VLAN"), widget=BulkEditNullBooleanSelect()
+        required=False, widget=BulkEditNullBooleanSelect(), label=_("Clear untagged VLAN")
+    )
+    set_null_qinq_svlan_vid = forms.NullBooleanField(
+        required=False, widget=BulkEditNullBooleanSelect(), label=_("Clear Q-in-Q SVLAN")
+    )
+    set_null_vlan_translation_policy = forms.NullBooleanField(
+        required=False, widget=BulkEditNullBooleanSelect(), label=_("Clear VLAN translation policy")
+    )
+    set_null_poe_mode = forms.NullBooleanField(
+        required=False, widget=BulkEditNullBooleanSelect(), label=_("Clear PoE mode")
+    )
+    set_null_poe_type = forms.NullBooleanField(
+        required=False, widget=BulkEditNullBooleanSelect(), label=_("Clear PoE type")
     )
 
-    class Meta:
-        nullable_fields = ("description", "scope", "speed", "duplex", "mtu", "mode", "poe_mode")
+    fieldsets = (
+        FieldSet("interface_role", "scope_type", "scope", name=_("Scope")),
+        FieldSet("description", name=_("Interface Template")),
+        FieldSet("enabled", "mgmt_only", "interface_description", "set_null_interface_description", name=_("General")),
+        FieldSet("speed", "set_null_speed", "duplex", "set_null_duplex", "mtu", "set_null_mtu", name=_("Physical")),
+        FieldSet("vrf", "set_null_vrf", name=_("Addressing")),
+        FieldSet(
+            "mode",
+            "set_null_mode",
+            "untagged_vlan_vid",
+            "set_null_untagged_vlan_vid",
+            "tagged_vlans_vids",
+            "qinq_svlan_vid",
+            "set_null_qinq_svlan_vid",
+            "vlan_translation_policy",
+            "set_null_vlan_translation_policy",
+            name=_("802.1Q Switching"),
+        ),
+        FieldSet("poe_mode", "set_null_poe_mode", "poe_type", "set_null_poe_type", name=_("Power over Ethernet")),
+    )
+    nullable_fields = (
+        "description",
+        "scope",
+        "mgmt_only",
+        "interface_description",
+        "speed",
+        "duplex",
+        "mtu",
+        "vrf",
+        "mode",
+        "untagged_vlan_vid",
+        "qinq_svlan_vid",
+        "vlan_translation_policy",
+        "poe_mode",
+        "poe_type",
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        if scope_type_id := get_field_value(self, "scope_type"):
-            try:
-                scope_type = ContentType.objects.get(pk=scope_type_id)
-                model = scope_type.model_class()
-                self.fields["scope"].queryset = model.objects.all()
-                self.fields["scope"].widget.attrs["selector"] = model._meta.label_lower
-                self.fields["scope"].disabled = False
-                self.fields["scope"].label = _(bettertitle(model._meta.verbose_name))
-            except ObjectDoesNotExist:
-                pass
+        _enable_scope_field(self)
 
 
 class InterfaceTemplateFilterSetForm(NetBoxModelFilterSetForm):
@@ -326,8 +420,21 @@ class InterfaceTemplateFilterSetForm(NetBoxModelFilterSetForm):
 
     model = InterfaceTemplate
 
-    name = forms.CharField(required=False, label=_("Name"))
-    description = forms.CharField(required=False, label=_("Description"))
+    fieldsets = (
+        FieldSet("q", "filter_id", "tag"),
+        FieldSet("interface_role_id", "scope_site_id", "scope_site_group_id", name=_("Scope")),
+        FieldSet("enabled", "mgmt_only", "speed", "duplex", "mtu", "vrf_id", name=_("Attributes")),
+        FieldSet(
+            "mode",
+            "untagged_vlan_vid",
+            "tagged_vlan_vid",
+            "qinq_svlan_vid",
+            "vlan_translation_policy_id",
+            name=_("802.1Q Switching"),
+        ),
+        FieldSet("poe_mode", "poe_type", name=_("Power over Ethernet")),
+    )
+
     interface_role_id = DynamicModelMultipleChoiceField(
         queryset=InterfaceRole.objects.all(),
         required=False,
@@ -343,26 +450,22 @@ class InterfaceTemplateFilterSetForm(NetBoxModelFilterSetForm):
         required=False,
         label=_("Site Group"),
     )
-    speed = forms.IntegerField(required=False, label=_("Speed (Mbps)"))
-    duplex = forms.ChoiceField(
-        choices=[("", "———"), ("auto", "Auto"), ("half", "Half"), ("full", "Full")],
+    enabled = forms.NullBooleanField(required=False, widget=BulkEditNullBooleanSelect(), label=_("Enabled"))
+    mgmt_only = forms.NullBooleanField(required=False, widget=BulkEditNullBooleanSelect(), label=_("Management only"))
+    speed = PositiveBigIntegerField(
         required=False,
-        label=_("Duplex"),
+        widget=NumberWithOptions(options=InterfaceSpeedChoices),
+        label=_("Speed (Kbps)"),
     )
+    duplex = forms.MultipleChoiceField(choices=InterfaceDuplexChoices, required=False, label=_("Duplex"))
     mtu = forms.IntegerField(required=False, label=_("MTU"))
-    mode = forms.ChoiceField(
-        choices=[
-            ("", "———"),
-            ("access", "Access"),
-            ("tagged", "Tagged"),
-            ("tagged-all", "Tagged All"),
-        ],
-        required=False,
-        label=_("Mode"),
+    vrf_id = DynamicModelMultipleChoiceField(queryset=VRF.objects.all(), required=False, label=_("VRF"))
+    mode = forms.MultipleChoiceField(choices=InterfaceModeChoices, required=False, label=_("802.1Q mode"))
+    untagged_vlan_vid = forms.IntegerField(required=False, label=_("Untagged VLAN VID"))
+    tagged_vlan_vid = forms.IntegerField(required=False, label=_("Tagged VLAN VID"))
+    qinq_svlan_vid = forms.IntegerField(required=False, label=_("Q-in-Q SVLAN VID"))
+    vlan_translation_policy_id = DynamicModelMultipleChoiceField(
+        queryset=VLANTranslationPolicy.objects.all(), required=False, label=_("VLAN translation policy")
     )
-    enabled = forms.NullBooleanField(
-        required=False,
-        label=_("Enabled"),
-        widget=forms.Select(choices=[("", "———"), (True, "Yes"), (False, "No")]),
-    )
-    poe_mode = forms.CharField(required=False, label=_("POE Mode"))
+    poe_mode = forms.MultipleChoiceField(choices=InterfacePoEModeChoices, required=False, label=_("PoE mode"))
+    poe_type = forms.MultipleChoiceField(choices=InterfacePoETypeChoices, required=False, label=_("PoE type"))

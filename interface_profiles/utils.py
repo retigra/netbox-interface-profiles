@@ -29,9 +29,9 @@ def _site_vlan_scope_query(site: Site) -> Q:
     return query
 
 
-def resolve_vlan_by_vid(site: Site, vid: int | None) -> VLAN | None:
+def resolve_vlan_by_vid(site: Site, vid: int | None, qinq_role: str | None = None) -> VLAN | None:
     """
-    Resolve a single VLAN object by VID for a site context.
+    Resolve a single VLAN object by VID for a site context, optionally limited to VLANs with a Q-in-Q role.
 
     Resolution priority:
     1. VLAN explicitly assigned to the site
@@ -42,6 +42,8 @@ def resolve_vlan_by_vid(site: Site, vid: int | None) -> VLAN | None:
         return None
 
     queryset = VLAN.objects.filter(vid=vid).filter(_site_vlan_scope_query(site))
+    if qinq_role is not None:
+        queryset = queryset.filter(qinq_role=qinq_role)
     return queryset.order_by(
         Case(
             When(site=site, then=Value(0)),
