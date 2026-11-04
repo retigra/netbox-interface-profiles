@@ -13,8 +13,8 @@ Use the version selector at the top of the page to read the documentation of the
 
 ## Upgrading
 
-1. Read the [release notes of the plugin](https://github.com/retigra/netbox-interface-profiles/blob/main/CHANGELOG.md)
-   and of [NetBox](https://netboxlabs.com/docs/netbox/release-notes/) for breaking changes.
+1. Read the [release notes of the plugin](../release-notes/) and of
+   [NetBox](https://netboxlabs.com/docs/netbox/release-notes/) for breaking changes.
 2. Test the upgrade in a development environment.
 3. Back up the database.
 4. Upgrade the package and apply migrations:

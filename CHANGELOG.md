@@ -6,7 +6,7 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [0.1.0]
+## [0.1.0] - 2026-11-04
 
 First public release, for NetBox 4.7.
 
