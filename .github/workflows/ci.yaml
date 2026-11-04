@@ -77,7 +77,8 @@ jobs:
 
       - name: Install NetBox dependencies
         working-directory: netbox
-        run: uv pip install --system -r requirements.txt
+        # tblib lets the parallel test runner report failures instead of crashing on unpicklable tracebacks
+        run: uv pip install --system -r requirements.txt tblib
 
       - name: Install plugin
         working-directory: plugin

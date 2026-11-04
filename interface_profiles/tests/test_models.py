@@ -560,14 +560,14 @@ class ProfileConfigTemplateTestCase(PluginModelTestCase):
             template.render({"interface": self.interface, "x": "<a & b>"}), "interface eth0\n description <a & b>"
         )
 
-    def test_interface_render_from_device_template(self):
+    def test_interface_config_render_from_device_template(self):
         self.create_template("Render", template_code="description {{ device.name }} {{ interface.name }} {{ vlan }}")
         Interface.objects.create(device=self.device, name="eth1", type=InterfaceTypeChoices.TYPE_1GE_FIXED)
         device_template = ConfigTemplate.objects.create(
             name="Device",
             template_code=(
                 "{% for interface in device.interfaces.order_by('name') %}"
-                "interface {{ interface.name }}: {{ interface_render(interface, vlan=10) }}\n"
+                "interface {{ interface.name }}: {{ interface_config_render(interface, vlan=10) }}\n"
                 "{% endfor %}"
             ),
         )
@@ -576,6 +576,21 @@ class ProfileConfigTemplateTestCase(PluginModelTestCase):
             device_template.render({"device": self.device}),
             "interface eth0: description Config Device eth0 10\ninterface eth1: \n",
         )
+
+    def test_interface_role_get_from_device_template(self):
+        self.create_template("Render")
+        Interface.objects.create(device=self.device, name="eth1", type=InterfaceTypeChoices.TYPE_1GE_FIXED)
+        device_template = ConfigTemplate.objects.create(
+            name="Device",
+            template_code=(
+                "{% for interface in device.interfaces.order_by('name') %}"
+                "{% set role = interface_role_get(interface) %}"
+                "{{ interface.name }}: {{ role.name if role else 'none' }}\n"
+                "{% endfor %}"
+            ),
+        )
+
+        self.assertEqual(device_template.render({"device": self.device}), "eth0: Config Role\neth1: none\n")
 
     def test_environment_params_are_validated(self):
         template = self.create_template("Params", environment_params={"loader": "x"})

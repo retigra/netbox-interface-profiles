@@ -71,7 +71,7 @@ interface_profiles = ["templates/**", "static/**", "locale/**/*.mo"]
 
 [dependency-groups]
 dev = [
-    "netbox-types==4.7.4",
+    "netbox-types==4.7.4.1",
     "ruff>=0.14.14",
     "ty>=0.0.20",
 ]

@@ -699,7 +699,7 @@ provides-extras = ["test"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "netbox-types", specifier = "==4.7.4" },
+    { name = "netbox-types", specifier = "==4.7.4.1" },
     { name = "ruff", specifier = ">=0.14.14" },
     { name = "ty", specifier = ">=0.0.20" },
 ]
@@ -940,7 +940,7 @@ wheels = [
 
 [[package]]
 name = "netbox-types"
-version = "4.7.4"
+version = "4.7.4.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "colorama" },
@@ -989,9 +989,9 @@ dependencies = [
     { name = "tzdata" },
     { name = "zensical" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/94/4f/6bab253b5faff99507b7f122f2f49eaea1a93b305f4f71f651f773b4673c/netbox_types-4.7.4.tar.gz", hash = "sha256:882e9a86416d5f6308286b3b4fd467dcc3f5b62cb10d0a587177f0d5b464a4e1", size = 21622927, upload-time = "2026-10-28T06:59:08.357Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5d/e6/b626533299de3bbdc0030e5e3e2ea77e61d182ba0696fdf3a19f499bc506/netbox_types-4.7.4.1.tar.gz", hash = "sha256:46f89b834ee66ff53682a187a8657f837909e31bcc34833f0e62c88e254a0d33", size = 21625409, upload-time = "2026-11-04T08:50:12.45Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/24/7b/80eb5a4984199fc3d1aba180c4974c6f98649a00cb684da705d46fb04c4c/netbox_types-4.7.4-py3-none-any.whl", hash = "sha256:edbe4acddfb9db3b5f4413fdbb7b9e4817b8c6f0b40e5327f7d8f01fa8472016", size = 3912047, upload-time = "2026-10-28T06:59:06.36Z" },
+    { url = "https://files.pythonhosted.org/packages/0c/55/f924872ea44f0f8e846d0d40329a9083d7a4fc1a535469182bd13f789107/netbox_types-4.7.4.1-py3-none-any.whl", hash = "sha256:2125c14a7e35f3cde9a088030102b5ac8a6043b8f19026de96c8ed8e739db87a", size = 3913575, upload-time = "2026-11-04T08:50:09.097Z" },
 ]
 
 [[package]]
