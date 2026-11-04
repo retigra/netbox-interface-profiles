@@ -45,8 +45,8 @@ make format
 `make docker-test` runs the tests in a throwaway NetBox container against the PostgreSQL and Valkey services of the
 development environment, using a separate test database.
 
-CI runs Ruff, checks for missing migrations and runs the test suite against every supported Python version on each
-push and pull request.
+CI runs Ruff, checks for missing migrations and runs the test suite against every supported NetBox version on each push
+and pull request.
 
 ## Releasing
 

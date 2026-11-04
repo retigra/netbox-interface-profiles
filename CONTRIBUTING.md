@@ -114,9 +114,9 @@ Before you submit a pull request, check that it meets these guidelines:
 1. The pull request should include tests.
 2. If the pull request adds functionality, the documentation in `docs/` should
    be updated, and the change added to [CHANGELOG.md](CHANGELOG.md).
-3. The pull request should work for Python 3.12, 3.13, and 3.14. Check
+3. The pull request should work for the supported NetBox versions. Check
    https://github.com/retigra/netbox-interface-profiles/actions and make sure
-   that the tests pass for all supported Python versions.
+   that the tests pass.
 
 ## Releasing
 
