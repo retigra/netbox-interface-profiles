@@ -1,16 +1,16 @@
 ---
 name: 🐛 Bug Report
-description: Report a reproducible bug in the current release of netbox custom scripts
+description: Report a reproducible bug in the current release of Interface Profiles
 labels: ["type: bug"]
 body:
   - type: markdown
     attributes:
       value: >
-        **NOTE:** This form is only for reporting _reproducible bugs_ in a current netbox custom scripts release.
+        **NOTE:** This form is only for reporting _reproducible bugs_ in a current Interface Profiles release.
   - type: input
     attributes:
-      label: netbox custom scripts version
-      description: What version of netbox custom scripts are you currently running?
+      label: Interface Profiles version
+      description: What version of Interface Profiles are you currently running?
       placeholder: v0.1.0
     validations:
       required: true
@@ -26,7 +26,6 @@ body:
       label: Python version
       description: What version of Python are you currently running?
       options:
-        - "3.11"
         - "3.12"
         - "3.13"
         - "3.14"

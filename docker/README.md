@@ -46,6 +46,18 @@ docker compose exec -it netbox ./manage.py makemigrations interface_profiles
 docker compose exec -it netbox ./manage.py migrate
 ```
 
+## Running tests
+
+From the repository root:
+
+```bash
+make docker-test
+make docker-test TESTS=interface_profiles.tests.test_api
+```
+
+The tests run in a throwaway `netbox` container with the CI configuration from `testing/configuration.py`, against
+the `postgres` and `valkey` services. They use their own test database, so the development data is left untouched.
+
 ## Configuration
 
 `configuration.py` is bind-mounted read-only into `/etc/netbox/config/configuration.py`. It reads all standard NetBox settings from environment variables, which are defined in `docker-compose.yml`.

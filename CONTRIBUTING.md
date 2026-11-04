@@ -32,7 +32,7 @@ transparent as possible, whether it's:
 
 ### Report Bugs
 
-Report bugs at https://github.com/wouterdebruijn/netbox-custom-scripts/issues.
+Report bugs at https://github.com/wouterdebruijn/netbox-interface-profiles/issues.
 
 If you are reporting a bug, please include:
 
@@ -52,14 +52,14 @@ and "help wanted" is open to whoever wants to implement it.
 
 ### Write Documentation
 
-netbox custom scripts could always use more documentation, whether as part of
-the official netbox custom scripts docs, in docstrings, or even on the web in
+Interface Profiles could always use more documentation, whether as part of
+the official Interface Profiles docs, in docstrings, or even on the web in
 blog posts, articles, and such.
 
 ### Submit Feedback
 
 The best way to send feedback is to file an issue at
-https://github.com/wouterdebruijn/netbox-custom-scripts/issues.
+https://github.com/wouterdebruijn/netbox-interface-profiles/issues.
 
 If you are proposing a feature:
 
@@ -70,69 +70,63 @@ If you are proposing a feature:
 
 ## Get Started!
 
-Ready to contribute? Here's how to set up `netbox-custom-scripts` for local
+Ready to contribute? Here's how to set up `netbox-interface-profiles` for local
 development.
 
-1. Fork the `netbox-custom-scripts` repo on GitHub.
-2. Clone your fork locally
+1. Fork the `netbox-interface-profiles` repo on GitHub.
+2. Clone your fork locally:
 
-   ```
-   $ git clone git@github.com:your_name_here/netbox-custom-scripts.git
-   ```
-
-3. Activate the NetBox virtual environment (see the NetBox documentation under
-   [Setting up a Development Environment](https://docs.netbox.dev/en/stable/development/getting-started/)):
-
-   ```
-   $ source ~/.venv/netbox/bin/activate
+   ```bash
+   git clone git@github.com:your_name_here/netbox-interface-profiles.git
    ```
 
-4. Add the plugin to NetBox virtual environment in Develop mode (see
-   [Plugins Development](https://docs.netbox.dev/en/stable/plugins/development/)):
+3. Start the development environment. It runs NetBox with the plugin installed
+   in editable mode, so code changes reload without rebuilding the image (see
+   [docker/README.md](docker/README.md)):
 
-   To ease development, it is recommended to go ahead and install the plugin at
-   this point using setuptools' develop mode. This will create symbolic links
-   within your Python environment to the plugin development directory. Call
-   setup.py from the plugin's root directory with the develop argument (instead
-   of install):
-
-   ```
-   $ python setup.py develop
+   ```bash
+   cd docker
+   docker compose up
    ```
 
-5. Create a branch for local development:
+4. Create a branch for local development:
 
-   ```
-   $ git checkout -b name-of-your-bugfix-or-feature
-   ```
-
-   Now you can make your changes locally.
-
-6. Commit your changes and push your branch to GitHub:
-
-   ```
-   $ git add .
-   $ git commit -m "Your detailed description of your changes."
-   $ git push origin name-of-your-bugfix-or-feature
+   ```bash
+   git checkout -b name-of-your-bugfix-or-feature
    ```
 
-7. Submit a pull request through the GitHub website.
+5. Make your changes, then lint and test them:
+
+   ```bash
+   make format lint
+   make docker-test
+   ```
+
+   After changing models, create the migration with
+   `docker compose exec netbox ./manage.py makemigrations interface_profiles`.
+
+6. Commit your changes, push your branch to GitHub and open a pull request.
 
 ## Pull Request Guidelines
 
 Before you submit a pull request, check that it meets these guidelines:
 
 1. The pull request should include tests.
-2. If the pull request adds functionality, the docs should be updated. Put your
-   new functionality into a function with a docstring, and add the feature to
-   the list in README.md.
+2. If the pull request adds functionality, the documentation in `docs/` should
+   be updated, and the change added to [CHANGELOG.md](CHANGELOG.md).
 3. The pull request should work for Python 3.12, 3.13, and 3.14. Check
-   https://github.com/wouterdebruijn/netbox-custom-scripts/actions and make sure
+   https://github.com/wouterdebruijn/netbox-interface-profiles/actions and make sure
    that the tests pass for all supported Python versions.
 
-## Deploying
+## Releasing
 
-A reminder for the maintainers on how to deploy. Make sure all your changes are
-committed (including an entry in CHANGELOG.md) and that all tests pass. Then in
-the github project go to `Releases` and create a new release with a new tag.
-This will automatically upload the release to pypi:
+A reminder for the maintainers on how to release:
+
+1. Update the version in `pyproject.toml` and `interface_profiles/__init__.py`.
+2. Update the supported NetBox versions in `COMPATIBILITY.md`, the README and
+   `docs/src/content/docs/reference/compatibility.md`, and `min_version` /
+   `max_version` in `interface_profiles/__init__.py`.
+3. Move the changes under _Unreleased_ in [CHANGELOG.md](CHANGELOG.md) to a
+   section for the new version.
+4. Commit, then create a GitHub release with a new `vX.Y.Z` tag. The tag
+   publishes the package to PyPI and the documentation to `/X.Y/` and `/latest/`.

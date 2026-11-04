@@ -18,24 +18,24 @@ you [delegate assignment permissions](../../guides/permissions/), so it is easie
 
 Go to **Interface Roles → Interface Roles** and add a role:
 
-| Field        | Value                           |
-| ------------ | ------------------------------- |
-| Name         | `Workstation`                   |
-| Group        | `Access`                        |
+| Field        | Value                             |
+| ------------ | --------------------------------- |
+| Name         | `Workstation`                     |
+| Group        | `Access`                          |
 | Device roles | _empty: available on all devices_ |
 
 ## 3. Add an interface template
 
 Go to **Interface Roles → Interface Templates** and add a template:
 
-| Field          | Value                             |
-| -------------- | --------------------------------- |
-| Interface role | `Workstation`                     |
-| Name           | `Default`                         |
-| Scope type     | _empty: applies to every site_    |
-| Mode           | Access                            |
+| Field             | Value                          |
+| ----------------- | ------------------------------ |
+| Interface role    | `Workstation`                  |
+| Name              | `Default`                      |
+| Scope type        | _empty: applies to every site_ |
+| Enabled           | Yes                            |
+| 802.1Q mode       | Access                         |
 | Untagged VLAN VID | `100`                          |
-| Enabled        | Yes                               |
 
 ## 4. Assign the role
 
@@ -56,4 +56,6 @@ every interface that would change, with its old and new values. Click **Apply Ch
 
 - Learn how templates are [scoped to sites and site groups](../../guides/interface-templates/#scope).
 - Render device configuration with [config templates](../../guides/config-templates/).
+- Fetch the role and configuration of interfaces in automation with the
+  [REST API](../../reference/api/#interface-configuration).
 - Let the service desk assign access roles with [permissions](../../guides/permissions/).

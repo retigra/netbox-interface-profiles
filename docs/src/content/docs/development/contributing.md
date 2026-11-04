@@ -33,10 +33,23 @@ details.
 
 ## Tests and linting
 
+From the repository root:
+
 ```bash
-docker compose exec netbox ./manage.py test interface_profiles.tests --keepdb
+make docker-test                                       # all tests, with the CI configuration
+make docker-test TESTS=interface_profiles.tests.test_api  # a single module
 make lint
 make format
 ```
 
-CI runs Ruff and the test suite against every supported Python version on each push and pull request.
+`make docker-test` runs the tests in a throwaway NetBox container against the PostgreSQL and Valkey services of the
+development environment, using a separate test database.
+
+CI runs Ruff, checks for missing migrations and runs the test suite against every supported Python version on each
+push and pull request.
+
+## Releasing
+
+Releases are tagged `vX.Y.Z`. A tag publishes the package to PyPI and the documentation of that version to `/X.Y/`
+and `/latest/`. See the release checklist in
+[CONTRIBUTING.md](https://github.com/wouterdebruijn/netbox-interface-profiles/blob/main/CONTRIBUTING.md#releasing).

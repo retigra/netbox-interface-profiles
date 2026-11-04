@@ -42,7 +42,8 @@ Role Group ─┬─ Interface Role ─┬─ Interface Template   (attributes +
    [synchronize](../../guides/synchronization/) the role. A dry run shows every interface that would change
    before anything is saved.
 4. Device config templates call `interface_config_render(interface)` to embed the rendered configuration of
-   each interface in the device configuration.
+   each interface in the device configuration. Automation can also fetch the role and rendered configuration of
+   an interface directly from the [REST API](../../reference/api/#interface-configuration).
 
 Continue with the [installation](../installation/), or follow the [quick start](../quick-start/) for a
 walkthrough.

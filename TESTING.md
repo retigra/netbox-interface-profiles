@@ -1,13 +1,13 @@
-# Testing Guide for netbox custom scripts
+# Testing Guide for Interface Profiles
 
-This guide explains how to write and run tests for netbox custom scripts.
+This guide explains how to write and run tests for Interface Profiles.
 
 ## Test Structure
 
-Tests are organized in the `netbox_custom_scripts/tests/` directory:
+Tests are organized in the `interface_profiles/tests/` directory:
 
 ```
-netbox_custom_scripts/
+interface_profiles/
 ├── tests/
 │   ├── __init__.py
 │   ├── test_models.py    # Model tests
@@ -28,13 +28,13 @@ testing patterns without depending on NetBox's internal testing utilities.
 Base class for all tests with user management and permissions.
 
 ```python
-from netbox_custom_scripts.testing import PluginTestCase
+from interface_profiles.testing import PluginTestCase
 
 class MyTestCase(PluginTestCase):
     def test_something(self):
         # self.user is automatically created
         # self.client is logged in
-        self.add_permissions('netbox_custom_scripts.view_object')
+        self.add_permissions('interface_profiles.view_object')
         # ... test code ...
 ```
 
@@ -50,7 +50,7 @@ class MyTestCase(PluginTestCase):
 For testing models with instance comparison utilities.
 
 ```python
-from netbox_custom_scripts.testing import PluginModelTestCase
+from interface_profiles.testing import PluginModelTestCase
 
 class MyModelTestCase(PluginModelTestCase):
     def test_model(self):
@@ -78,13 +78,13 @@ class MyModelTestCase(PluginModelTestCase):
 For testing REST API endpoints.
 
 ```python
-from netbox_custom_scripts.testing import PluginAPITestCase
+from interface_profiles.testing import PluginAPITestCase
 
 class MyAPITestCase(PluginAPITestCase):
     def setUp(self):
         super().setUp()
-        self.list_url_name = 'plugins-api:netbox_custom_scripts-api:mymodel-list'
-        self.detail_url_name = 'plugins-api:netbox_custom_scripts-api:mymodel-detail'
+        self.list_url_name = 'plugins-api:interface_profiles-api:mymodel-list'
+        self.detail_url_name = 'plugins-api:interface_profiles-api:mymodel-detail'
 
     def test_list(self):
         url = self._get_list_url()
@@ -103,12 +103,12 @@ class MyAPITestCase(PluginAPITestCase):
 For testing web views and forms.
 
 ```python
-from netbox_custom_scripts.testing import PluginViewTestCase
+from interface_profiles.testing import PluginViewTestCase
 
 class MyViewTestCase(PluginViewTestCase):
     def setUp(self):
         super().setUp()
-        self.base_url = 'plugins:netbox_custom_scripts:mymodel'
+        self.base_url = 'plugins:interface_profiles:mymodel'
 
     def test_create(self):
         url = self._get_url('add')
@@ -128,7 +128,7 @@ class MyViewTestCase(PluginViewTestCase):
 For testing GraphQL queries.
 
 ```python
-from netbox_custom_scripts.testing import PluginGraphQLTestCase
+from interface_profiles.testing import PluginGraphQLTestCase
 
 class MyGraphQLTestCase(PluginGraphQLTestCase):
     def test_query(self):
@@ -146,10 +146,10 @@ class MyGraphQLTestCase(PluginGraphQLTestCase):
 
 ## Test Utilities
 
-The `netbox_custom_scripts.testing.utils` module provides helpful utilities:
+The `interface_profiles.testing.utils` module provides helpful utilities:
 
 ```python
-from netbox_custom_scripts.testing.utils import (
+from interface_profiles.testing.utils import (
     get_random_string,      # Generate random test data
     create_test_user,       # Create users with permissions
     post_data,              # Convert dict to form POST format
@@ -162,7 +162,7 @@ from netbox_custom_scripts.testing.utils import (
 
 # Example usage
 name = get_random_string(20)
-user = create_test_user(permissions=['netbox_custom_scripts.view_object'])
+user = create_test_user(permissions=['interface_profiles.view_object'])
 tags = create_tags(['important', 'test'])
 
 with disable_warnings('django.request'):
@@ -178,42 +178,41 @@ with disable_warnings('django.request'):
 cd /path/to/netbox/netbox
 
 # Run all plugin tests
-python manage.py test netbox_custom_scripts.tests
+python manage.py test interface_profiles.tests
 
 # Run specific test file
-python manage.py test netbox_custom_scripts.tests.test_models
+python manage.py test interface_profiles.tests.test_models
 
 # Run specific test class
-python manage.py test netbox_custom_scripts.tests.test_models.objectTestCase
+python manage.py test interface_profiles.tests.test_models.InterfaceRoleTestCase
 
 # Run specific test method
-python manage.py test netbox_custom_scripts.tests.test_models.objectTestCase.test_create
+python manage.py test interface_profiles.tests.test_models.InterfaceRoleTestCase.test_create_interface_role
 
 # Run with verbose output
-python manage.py test netbox_custom_scripts.tests -v 2
+python manage.py test interface_profiles.tests -v 2
 
 # Run in parallel (faster)
-python manage.py test netbox_custom_scripts.tests --parallel
+python manage.py test interface_profiles.tests --parallel
 
 # Keep database between runs (faster during development)
-python manage.py test netbox_custom_scripts.tests --keepdb
+python manage.py test interface_profiles.tests --keepdb
 ```
 
 ### With Docker Compose (recommended for contributors)
 
-```bash
-# Build and start services
-docker-compose up -d
+From the repository root:
 
-# Run tests
-docker-compose exec netbox python manage.py test netbox_custom_scripts.tests
+```bash
+# Run all tests with the CI test configuration (testing/configuration.py)
+make docker-test
 
 # Run specific tests
-docker-compose exec netbox python manage.py test netbox_custom_scripts.tests.test_api
-
-# Stop services
-docker-compose down
+make docker-test TESTS=interface_profiles.tests.test_api
 ```
+
+This starts PostgreSQL and Valkey from `docker/docker-compose.yml` and runs the tests in a throwaway NetBox
+container. The tests use their own database, so the data of the development environment is left untouched.
 
 ### CI/CD (GitHub Actions)
 
@@ -269,7 +268,7 @@ def test_view_without_permission(self):
 
 def test_view_with_permission(self):
     """Test view with proper permission."""
-    self.add_permissions('netbox_custom_scripts.view_object')
+    self.add_permissions('interface_profiles.view_object')
     url = reverse('...')
     response = self.client.get(url)
     self.assertHttpStatus(response, 200)
@@ -300,7 +299,7 @@ def test_multiple_scenarios(self):
 ```python
 def test_form_validation(self):
     """Test form validation."""
-    url = reverse('netbox_custom_scripts:mymodel_add')
+    url = reverse('interface_profiles:mymodel_add')
 
     # Test with invalid data
     bad_data = self.post_data({'name': ''})
@@ -381,7 +380,7 @@ Tests must pass before PRs can be merged.
 
 ## Troubleshooting
 
-**"No module named 'netbox_custom_scripts'"**
+**"No module named 'interface_profiles'"**
 
 - Ensure plugin is installed: `pip install -e .`
 - Ensure plugin is in PLUGINS list in configuration.py

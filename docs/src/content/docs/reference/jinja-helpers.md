@@ -52,3 +52,18 @@ templates = ProfileConfigTemplate.objects.for_interface(interface)
 # Config templates in scope of the interface, for any role
 templates = ProfileConfigTemplate.objects.in_scope(interface)
 ```
+
+`resolve_interface_config()` returns what the
+[`interface-configs/` REST endpoint](../api/#interface-configuration) returns: the role, the interface template and
+config template that apply, and the rendered configuration.
+
+```python
+from interface_profiles.services import resolve_interface_config
+
+result = resolve_interface_config(interface)
+result.interface_role       # InterfaceRole or None
+result.interface_template   # InterfaceTemplate or None
+result.config_template      # ProfileConfigTemplate or None
+result.config               # rendered configuration, or None
+result.config_error         # rendering error, or None
+```

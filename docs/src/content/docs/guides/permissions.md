@@ -49,5 +49,6 @@ The device tab and the role menu only offer the roles the user may assign.
 | Synchronize a role                     | `dcim.change_interface`, `interface_profiles.view_rolesync`           |
 | View synchronizations                  | `interface_profiles.view_rolesync`                                    |
 | Sync a config template from its data file | `interface_profiles.sync_profileconfigtemplate`                    |
+| Read the [`interface-configs/`](../../reference/api/#interface-configuration) API endpoint | `dcim.view_interface`, and `interface_profiles.view_interfaceroleassignment` to see roles |
 
 Managing roles, groups and templates uses the standard add, change and delete permissions of each object type.

@@ -77,5 +77,16 @@ Interfaces without an applicable config template render as an empty string. See 
 ## Preview
 
 The **Interface Role Automation** card on an interface's detail page lists the config templates that apply, marks
-the one that is used, and shows a preview of its rendered output. The preview is rendered with `interface`,
-`device`, `role`, `assignment` and `config_template`, but without the device's config context.
+the one that is used, and shows a preview of its rendered output. Rendering errors are shown in the preview.
+
+## Outside device config templates
+
+The configuration of a single interface can also be rendered without a device config template:
+
+- the [`interface-configs/` REST endpoint](../../reference/api/#interface-configuration) returns the role and
+  rendered configuration of an interface, for use in automation,
+- the preview on the interface's detail page.
+
+Both render the config template with the device's config context, `device` and `interface`, just like
+`interface_config_render()` does from a device config template, plus `role`, `assignment` and `config_template`.
+A template that only uses `interface`, `device` and config context data therefore renders the same everywhere.

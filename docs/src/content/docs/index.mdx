@@ -3,7 +3,7 @@ title: Interface Profiles
 description: Assign roles to NetBox interfaces and keep their configuration in sync.
 template: splash
 hero:
-  tagline: Give interfaces a role, such as an access port or an uplink, and let the plugin configure them. Speed, mode, VLANs and rendered device configuration follow the role.
+  tagline: Give interfaces a role, such as an access port or an uplink, and let the plugin configure them. Interface attributes, VLANs and rendered device configuration follow the role.
   image:
     file: ../../assets/logo.svg
   actions:
@@ -24,8 +24,8 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 		REST API.
 	</Card>
 	<Card title="Interface templates" icon="setting">
-		Set speed, duplex, MTU, mode, PoE and VLANs per role, globally or per site group or site. VLANs are
-		resolved by VID in the interface's site.
+		Set the description, speed, duplex, MTU, VRF, mode, VLANs and PoE per role, globally or per site group or
+		site. VLANs are resolved by VID in the interface's site.
 	</Card>
 	<Card title="Safe synchronization" icon="approve-check">
 		Change a template and resynchronize every interface with the role. Review the changes of a dry run
@@ -41,6 +41,6 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 	</Card>
 	<Card title="Native NetBox" icon="rocket">
 		REST and GraphQL APIs, change logging, tags, custom fields, bulk import and edit: all models behave
-		like any other NetBox object.
+		like any other NetBox object. One API call returns the role and rendered configuration of an interface.
 	</Card>
 </CardGrid>
