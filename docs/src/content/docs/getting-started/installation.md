@@ -15,22 +15,22 @@ The plugin has no Python dependencies beyond those of NetBox.
 
 ## Install the package
 
-Install the [`interface-profiles`](https://pypi.org/project/interface-profiles/) package into the virtual
+Install the [`netbox-interface-profiles`](https://pypi.org/project/netbox-interface-profiles/) package into the virtual
 environment of NetBox:
 
 ```bash
 source /opt/netbox/venv/bin/activate
-pip install interface-profiles
+pip install netbox-interface-profiles
 ```
 
 To keep the plugin installed when NetBox is upgraded, add it to `local_requirements.txt` in the NetBox root:
 
 ```bash
-echo "interface-profiles" >> /opt/netbox/local_requirements.txt
+echo "netbox-interface-profiles" >> /opt/netbox/local_requirements.txt
 ```
 
 :::tip
-Pin the version, e.g. `interface-profiles==0.1.0`, so a NetBox upgrade does not pull in a plugin release you have
+Pin the version, e.g. `netbox-interface-profiles==0.1.0`, so a NetBox upgrade does not pull in a plugin release you have
 not tested. See [compatibility](../../reference/compatibility/) for the NetBox versions each release supports.
 :::
 
@@ -46,7 +46,7 @@ Add the package to `plugin_requirements.txt` and rebuild the image, as described
 [netbox-docker plugin instructions](https://github.com/netbox-community/netbox-docker/wiki/Using-Netbox-Plugins):
 
 ```text title="plugin_requirements.txt"
-interface-profiles==0.1.0
+netbox-interface-profiles==0.1.0
 ```
 
 ## Enable the plugin

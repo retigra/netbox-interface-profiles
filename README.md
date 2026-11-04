@@ -42,10 +42,10 @@ Install the package into the virtual environment of NetBox:
 
 ```bash
 source /opt/netbox/venv/bin/activate
-pip install interface-profiles
+pip install netbox-interface-profiles
 ```
 
-For netbox-docker, add `interface-profiles` to `plugin_requirements.txt`, see
+For netbox-docker, add `netbox-interface-profiles` to `plugin_requirements.txt`, see
 the
 [netbox-docker plugin instructions](https://github.com/netbox-community/netbox-docker/wiki/Using-Netbox-Plugins).
 
@@ -127,3 +127,7 @@ Based on the NetBox plugin tutorial
 created with [Cookiecutter](https://github.com/audreyr/cookiecutter) and the
 [`netbox-community/cookiecutter-netbox-plugin`](https://github.com/netbox-community/cookiecutter-netbox-plugin)
 project template.
+
+## License
+
+Licensed under the [GNU Affero General Public License v3.0](LICENSE).

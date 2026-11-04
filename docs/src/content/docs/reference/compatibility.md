@@ -20,7 +20,7 @@ Use the version selector at the top of the page to read the documentation of the
 4. Upgrade the package and apply migrations:
 
    ```bash
-   pip install --upgrade interface-profiles
+   pip install --upgrade netbox-interface-profiles
    cd /opt/netbox/netbox
    python manage.py migrate
    python manage.py collectstatic --no-input

@@ -1,1 +1,1 @@
-interface-profiles @ file:///opt/interface-profiles
+netbox-interface-profiles @ file:///opt/interface-profiles
