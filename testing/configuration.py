@@ -1,5 +1,5 @@
 """
-NetBox configuration for testing netbox custom scripts.
+NetBox configuration for testing Interface Profiles.
 
 This configuration is used when running tests and should not be used in production.
 
