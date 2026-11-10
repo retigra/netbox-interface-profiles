@@ -210,15 +210,17 @@ To change the role, `PATCH` the assignment with a new `interface_role`. To remov
 
 ## Interface templates
 
-Interface templates are scoped with `scope_type` (`dcim.site` or `dcim.sitegroup`) and `scope_id`. Leave both empty
-for a global template. VLANs are set by VID, and choice fields take the same values as NetBox's interface endpoint:
+Interface templates are scoped with `scope_type` (`dcim.site` or `dcim.sitegroup`) and `scope_ids`, the IDs of one or
+more sites or site groups. Leave both empty for a global template. Responses list the objects in scope under `scopes`.
+To change only the objects in scope, `PATCH` the `scope_ids`; changing the `scope_type` also needs new `scope_ids`.
+VLANs are set by VID, and choice fields take the same values as NetBox's interface endpoint:
 
 ```json
 {
   "interface_role": 4,
   "name": "Amsterdam",
   "scope_type": "dcim.site",
-  "scope_id": 12,
+  "scope_ids": [12, 13],
   "interface_description": "Workstation",
   "mode": "tagged",
   "untagged_vlan_vid": 100,

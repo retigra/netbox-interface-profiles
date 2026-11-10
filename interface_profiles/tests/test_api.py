@@ -3,14 +3,14 @@ Test cases for interface profiles REST API.
 """
 
 from dcim.choices import InterfaceModeChoices, InterfaceTypeChoices
-from dcim.models import Device, DeviceRole, DeviceType, Interface, Manufacturer, Platform, Site
+from dcim.models import Device, DeviceRole, DeviceType, Interface, Manufacturer, Platform, Site, SiteGroup
 from django.urls import reverse
 from extras.models import ConfigContext
 from ipam.models import VLAN
 
 from ..models import InterfaceRole, InterfaceRoleAssignment, InterfaceTemplate, ProfileConfigTemplate, RoleGroup
 from ..testing import PluginAPITestCase
-from ..testing.utils import create_tags, disable_warnings, get_random_string
+from ..testing.utils import create_interface_template, create_tags, disable_warnings, get_random_string
 
 
 class InterfaceRoleAPITestCase(PluginAPITestCase):
@@ -495,9 +495,11 @@ class InterfaceTemplateAPITestCase(PluginAPITestCase):
         cls.global_template = InterfaceTemplate.objects.create(
             interface_role=cls.role, name="Global", mode=InterfaceModeChoices.MODE_TAGGED, tagged_vlans_vids=[10, 20]
         )
-        cls.site_template = InterfaceTemplate.objects.create(
-            interface_role=cls.role, name="Site", scope=cls.site, mode=InterfaceModeChoices.MODE_ACCESS
+        cls.other_site = Site.objects.create(name="Site-Templates-Other", slug="site-templates-other")
+        cls.site_template = create_interface_template(
+            cls.site, interface_role=cls.role, name="Site", mode=InterfaceModeChoices.MODE_ACCESS
         )
+        cls.site_group = SiteGroup.objects.create(name="SG-Templates", slug="sg-templates")
 
     def setUp(self):
         super().setUp()
@@ -540,6 +542,62 @@ class InterfaceTemplateAPITestCase(PluginAPITestCase):
         self.assertEqual(response.data["interface_description"], "Created by the API")
         self.assertEqual(response.data["poe_type"]["value"], "type3-ieee802.3bt")
         self.assertTrue(response.data["set_null_vrf"])
+
+    def test_scope_multiple_objects(self):
+        self.add_permissions("interface_profiles.add_interfacetemplate", "interface_profiles.change_interfacetemplate")
+
+        response = self.client.post(
+            self._get_list_url(),
+            {
+                "interface_role": self.role.pk,
+                "name": "Multi",
+                "scope_type": "dcim.site",
+                "scope_ids": [self.site.pk, self.other_site.pk],
+            },
+            format="json",
+        )
+
+        self.assertHttpStatus(response, 201)
+        self.assertEqual(sorted(response.data["scope_ids"]), sorted([self.site.pk, self.other_site.pk]))
+        self.assertEqual({scope["id"] for scope in response.data["scopes"]}, {self.site.pk, self.other_site.pk})
+        template = InterfaceTemplate.objects.get(name="Multi")
+        self.assertEqual(set(template.scope_sites.all()), {self.site, self.other_site})
+
+        # Only the objects in scope change, the scope type is kept
+        url = reverse("plugins-api:interface_profiles-api:interfacetemplate-detail", args=[template.pk])
+        response = self.client.patch(url, {"scope_ids": [self.other_site.pk]}, format="json")
+        self.assertHttpStatus(response, 200)
+        self.assertEqual(list(template.scope_sites.all()), [self.other_site])
+
+        # Changing the scope type replaces the objects in scope
+        response = self.client.patch(
+            url, {"scope_type": "dcim.sitegroup", "scope_ids": [self.site_group.pk]}, format="json"
+        )
+        self.assertHttpStatus(response, 200)
+        self.assertEqual(list(template.scope_site_groups.all()), [self.site_group])
+        self.assertFalse(template.scope_sites.exists())
+
+        # A global template has no objects in scope
+        response = self.client.patch(url, {"scope_type": None}, format="json")
+        self.assertHttpStatus(response, 200)
+        self.assertEqual(response.data["scopes"], [])
+        self.assertFalse(template.scope_site_groups.exists())
+
+    def test_scope_rejects_invalid_objects(self):
+        self.add_permissions("interface_profiles.add_interfacetemplate")
+
+        cases = (
+            {"scope_type": "dcim.site"},
+            {"scope_type": "dcim.site", "scope_ids": []},
+            {"scope_type": "dcim.site", "scope_ids": [self.site_group.pk + 1000]},
+            {"scope_ids": [self.site.pk]},
+        )
+        for scope in cases:
+            with self.subTest(scope=scope), disable_warnings("django.request"):
+                response = self.client.post(
+                    self._get_list_url(), {"interface_role": self.role.pk, "name": "Invalid", **scope}, format="json"
+                )
+                self.assertHttpStatus(response, 400)
 
     def test_rejects_invalid_vids(self):
         self.add_permissions("interface_profiles.add_interfacetemplate")

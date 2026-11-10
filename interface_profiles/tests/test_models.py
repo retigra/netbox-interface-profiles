@@ -9,7 +9,7 @@ from core.models import AutoSyncRecord, DataFile, DataSource, ObjectType
 from dcim.choices import InterfaceModeChoices, InterfaceTypeChoices
 from dcim.models import Device, DeviceRole, DeviceType, Interface, Manufacturer, Platform, Site, SiteGroup
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import ValidationError
+from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
 from django.utils import timezone
 from extras.models import ConfigTemplate
 from ipam.models import VLAN, VRF, VLANGroup, VLANTranslationPolicy
@@ -19,7 +19,7 @@ from ..forms import InterfaceTemplateForm, ProfileConfigTemplateForm
 from ..models import InterfaceRole, InterfaceRoleAssignment, InterfaceTemplate, ProfileConfigTemplate, RoleGroup
 from ..services import get_matching_templates
 from ..testing import PluginModelTestCase
-from ..testing.utils import create_tags, get_random_string
+from ..testing.utils import create_interface_template, create_tags, get_random_string
 
 
 class InterfaceRoleTestCase(PluginModelTestCase):
@@ -144,9 +144,9 @@ class InterfaceTemplateTestCase(PluginModelTestCase):
 
     def test_create_interface_template(self):
         """Test creating an InterfaceTemplate instance with optional fields."""
-        template = InterfaceTemplate.objects.create(
+        template = create_interface_template(
+            self.site_group,
             interface_role=self.role,
-            scope=self.site_group,
             name="Access Port Template",
             description="",
             speed=1000,
@@ -160,7 +160,8 @@ class InterfaceTemplateTestCase(PluginModelTestCase):
 
         self.assertEqual(template.name, "Access Port Template")
         self.assertEqual(template.interface_role, self.role)
-        self.assertEqual(template.scope, self.site_group)
+        self.assertEqual(list(template.scope_objects), [self.site_group])
+        self.assertEqual(template.scope_ids, [self.site_group.pk])
         self.assertEqual(template.untagged_vlan_vid, 10)
         self.assertEqual(template.tagged_vlans_vids, [])
 
@@ -278,17 +279,38 @@ class InterfaceTemplateTestCase(PluginModelTestCase):
 
         self.assertEqual(set(context.exception.error_dict), {"tagged_vlans_vids"})
 
-    def test_scope_requires_type_and_object(self):
-        template = InterfaceTemplate(
-            interface_role=self.role,
-            name="Half Scoped",
-            scope_id=1,
+    def test_scope_requires_objects_of_scope_type(self):
+        site_group = SiteGroup.objects.create(name="SG-Scope", slug="sg-scope")
+        site = Site.objects.create(name="Site-Scope", slug="site-scope", group=site_group)
+        site_ct = ContentType.objects.get_for_model(Site)
+        cases = (
+            (site_ct, {"scope_sites": [], "scope_site_groups": []}, "Please select a site."),
+            (site_ct, {"scope_sites": [site], "scope_site_groups": [site_group]}, "Site groups cannot be selected"),
+            (None, {"scope_sites": [site], "scope_site_groups": []}, "Please select a scope type."),
         )
+        for scope_type, m2m_values, message in cases:
+            with self.subTest(message=message):
+                template = InterfaceTemplate(interface_role=self.role, name="Scoped", scope_type=scope_type)
+                template._m2m_values = m2m_values
 
-        with self.assertRaises(ValidationError) as context:
+                with self.assertRaises(ValidationError) as context:
+                    template.full_clean()
+
+                self.assertIn(message, context.exception.message_dict[NON_FIELD_ERRORS][0])
+
+        template = InterfaceTemplate(interface_role=self.role, name="Scoped", scope_type=site_ct)
+        template._m2m_values = {"scope_sites": [site], "scope_site_groups": []}
+        template.full_clean()
+
+    def test_scope_validation_uses_saved_objects(self):
+        """Without new values, the objects in scope of a saved template are validated."""
+        site = Site.objects.create(name="Site-Saved", slug="site-saved")
+        template = create_interface_template(site, interface_role=self.role, name="Saved")
+        template.full_clean()
+
+        template.scope_sites.clear()
+        with self.assertRaises(ValidationError):
             template.full_clean()
-
-        self.assertEqual(set(context.exception.error_dict), {"scope_type"})
 
     def test_template_form_parses_tagged_vlan_ranges(self):
         form = InterfaceTemplateForm(
@@ -435,11 +457,14 @@ class InterfaceRoleAssignmentSignalTestCase(PluginModelTestCase):
         unrelated = SiteGroup.objects.create(name="SG-Signal-Other", slug="sg-signal-other", parent=root)
 
         global_template = InterfaceTemplate.objects.create(interface_role=self.role, name="Global")
-        root_template = InterfaceTemplate.objects.create(interface_role=self.role, name="Root", scope=root)
-        InterfaceTemplate.objects.create(interface_role=self.role, name="Other", scope=unrelated)
-        parent_template = InterfaceTemplate.objects.create(interface_role=self.role, name="Parent", scope=parent)
-        group_template = InterfaceTemplate.objects.create(interface_role=self.role, name="Group", scope=self.site_group)
-        site_template = InterfaceTemplate.objects.create(interface_role=self.role, name="Site", scope=self.site)
+        other_site = Site.objects.create(name="Site-Signal-Other", slug="site-signal-other", group=unrelated)
+
+        root_template = create_interface_template(root, interface_role=self.role, name="Root")
+        create_interface_template(unrelated, interface_role=self.role, name="Other")
+        create_interface_template(other_site, interface_role=self.role, name="Other Site")
+        parent_template = create_interface_template(unrelated, parent, interface_role=self.role, name="Parent")
+        group_template = create_interface_template(self.site_group, interface_role=self.role, name="Group")
+        site_template = create_interface_template(other_site, self.site, interface_role=self.role, name="Site")
 
         self.interface.refresh_from_db()
         self.assertEqual(

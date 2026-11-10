@@ -45,8 +45,8 @@
             {% for template in matching_interface_templates %}
               <div class="mb-1">
                 <a href="{{ template.get_absolute_url }}">{{ template.name }}</a>
-                {% if template.scope %}
-                  <span class="text-muted">({{ template.scope_type.name }}: {{ template.scope }})</span>
+                {% if template.scope_type %}
+                  <span class="text-muted">({{ template.scope_type.name }}: {{ template.scope_objects|join:", " }})</span>
                 {% else %}
                   <span class="text-muted">(global)</span>
                 {% endif %}

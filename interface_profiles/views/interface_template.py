@@ -22,7 +22,7 @@ class InterfaceTemplateListView(generic.ObjectListView):
     queryset = models.InterfaceTemplate.objects.select_related(
         "interface_role",
         "scope_type",
-    )
+    ).prefetch_related("scope_sites", "scope_site_groups")
     table = tables.InterfaceTemplateTable
     filterset = filtersets.InterfaceTemplateFilterSet
     filterset_form = forms.InterfaceTemplateFilterSetForm
@@ -56,6 +56,26 @@ class InterfaceTemplateBulkEditView(generic.BulkEditView):
     filterset = filtersets.InterfaceTemplateFilterSet
     table = tables.InterfaceTemplateTable
     form = forms.InterfaceTemplateBulkEditForm
+
+    def _update_objects(self, form, request):
+        # The scope is not a model field, so BulkEditView cannot nullify it: InterfaceTemplateBulkEditForm does
+        nullified = request.POST.getlist("_nullify")
+        self._nullify_scope = "scope" in nullified
+        if self._nullify_scope:
+            request.POST = request.POST.copy()
+            request.POST.setlist("_nullify", [name for name in nullified if name != "scope"])
+        return super()._update_objects(form, request)
+
+    def pre_save_operations(self, form, obj):
+        # Validated by InterfaceTemplate.clean() and saved by post_save_operations()
+        obj._scope_values = {}
+        if scope := form.get_scope(self._nullify_scope):
+            obj.scope_type, obj._scope_values = scope
+            obj._m2m_values.update(obj._scope_values)
+
+    def post_save_operations(self, form, obj):
+        for relation, scopes in obj._scope_values.items():
+            getattr(obj, relation).set(scopes)
 
 
 class InterfaceTemplateBulkDeleteView(generic.BulkDeleteView):

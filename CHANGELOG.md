@@ -6,6 +6,19 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** an interface template can be scoped to several sites or several
+  site groups. Like the scope of a NetBox VLAN group, the form has a single
+  scope field to select the object type and then the objects, one or more here.
+  In the REST API and in imports, `scope_id` is replaced by the list
+  `scope_ids`, and the API returns the objects in scope as `scopes` instead of
+  `scope`. Imports also accept `scope_names`. GraphQL exposes the objects as
+  `scope_sites` and `scope_site_groups`. Existing scopes are migrated.
+- Interface templates scoped to a site group also apply to sites in its child
+  groups. When several site groups match, the template of the nearest group is
+  used.
+
 ## [0.1.0] - 2026-11-04
 
 First public release, for NetBox 4.7.

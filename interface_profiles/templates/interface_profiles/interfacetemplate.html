@@ -18,8 +18,9 @@
           <tr>
             <th scope="row">Scope</th>
             <td>
-              {% if object.scope %}
-                {{ object.scope|linkify }}
+              {% if object.scope_type %}
+                <span class="text-muted">{{ object.scope_type.name|bettertitle }}:</span>
+                {% for scope in object.scope_objects %}{{ scope|linkify }}{% if not forloop.last %}, {% endif %}{% empty %}{{ ''|placeholder }}{% endfor %}
               {% else %}
                 <span class="text-muted">Global</span>
               {% endif %}

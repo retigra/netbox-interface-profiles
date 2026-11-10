@@ -53,11 +53,13 @@ The template follows the rules NetBox applies to interfaces:
 
 ## Scope
 
-A template applies globally, to a **site group** or to a **site**. When a role has several templates, the most
-specific one that matches the interface's site is used:
+A template applies globally, to one or more **site groups** or to one or more **sites**. A template has a single
+scope type, so it cannot be scoped to sites and site groups at the same time. When a role has several templates,
+the most specific one that matches the interface's site is used:
 
-1. a template scoped to the device's site,
-2. a template scoped to the site's site group, or to one of its parent groups, the nearest group first,
+1. a template scoped to sites, including the device's site,
+2. a template scoped to site groups, including the site's site group or one of its parent groups, the nearest group
+   first,
 3. a template without a scope.
 
 Only one template is applied to an interface; attributes are not merged between templates. A role without a
@@ -85,13 +87,15 @@ VLANs are left out.
 ## Importing templates
 
 Templates can be imported as CSV, JSON or YAML from the template list. Refer to the role by name, the VRF by its
-route distinguisher and the VLAN translation policy by name. Tagged VLANs are written like in the form:
+route distinguisher and the VLAN translation policy by name. The objects in scope are referred to by ID in
+`scope_ids` or by name in `scope_names`, like NetBox's `scope_id` and `scope_name`. Tagged VLANs are written like in
+the form:
 
 ```yaml
 - interface_role: Workstation
   name: Amsterdam
   scope_type: dcim.site
-  scope_id: 12
+  scope_names: [Amsterdam, Rotterdam]
   mode: tagged
   untagged_vlan_vid: 100
   tagged_vlans_vids: "200,300-305"

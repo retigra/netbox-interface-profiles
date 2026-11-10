@@ -14,6 +14,7 @@ from netbox.graphql.types import NetBoxObjectType
 from ..models import InterfaceTemplate
 
 if TYPE_CHECKING:
+    from dcim.graphql.types import SiteGroupType, SiteType
     from ipam.graphql.types import VLANTranslationPolicyType, VRFType
     from netbox.graphql.types import ContentTypeType
 
@@ -30,6 +31,8 @@ class InterfaceRoleTemplateType(NetBoxObjectType):
 
     interface_role: Annotated["InterfaceRoleType", strawberry.lazy("interface_profiles.graphql.interface_role")]
     scope_type: Annotated["ContentTypeType", strawberry.lazy("netbox.graphql.types")] | None
+    scope_sites: list[Annotated["SiteType", strawberry.lazy("dcim.graphql.types")]]
+    scope_site_groups: list[Annotated["SiteGroupType", strawberry.lazy("dcim.graphql.types")]]
     vrf: Annotated["VRFType", strawberry.lazy("ipam.graphql.types")] | None
     vlan_translation_policy: Annotated["VLANTranslationPolicyType", strawberry.lazy("ipam.graphql.types")] | None
 

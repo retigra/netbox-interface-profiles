@@ -6,6 +6,7 @@ import re
 
 from dcim.choices import InterfaceModeChoices, InterfaceTypeChoices
 from dcim.models import Device, DeviceRole, DeviceType, Interface, Manufacturer, Platform, Site, SiteGroup
+from django.contrib.contenttypes.models import ContentType
 from django.test import Client
 from django.urls import reverse
 from django.utils.html import escape
@@ -20,7 +21,7 @@ from ..models import (
 )
 from ..tables.interface_role_assignment import DEVICE_INTERFACE_BUTTONS
 from ..testing import PluginViewTestCase
-from ..testing.utils import create_tags, disable_warnings, get_random_string
+from ..testing.utils import create_interface_template, create_tags, disable_warnings, get_random_string
 
 
 class InterfaceRoleViewTestCase(PluginViewTestCase):
@@ -972,6 +973,120 @@ class InterfaceTemplateViewTestCase(PluginViewTestCase):
         self.assertEqual(template.poe_type, "type2-ieee802.3at")
         self.assertEqual(template.vrf, self.vrf)
 
+    def test_add_form_scopes_multiple_site_groups(self):
+        self.add_permissions(
+            "interface_profiles.add_interfacetemplate",
+            "interface_profiles.view_interfacetemplate",
+            "interface_profiles.view_interfacerole",
+            "dcim.view_sitegroup",
+        )
+        site_groups = [SiteGroup.objects.create(name=f"Form SG {i}", slug=f"form-sg-{i}") for i in range(2)]
+        response = self.client.post(
+            reverse("plugins:interface_profiles:interfacetemplate_add"),
+            {
+                "interface_role": self.role.pk,
+                "name": "Scoped Template",
+                "enabled": "on",
+                "scope_content_type": ContentType.objects.get_for_model(SiteGroup).pk,
+                "scope_object_id": [site_group.pk for site_group in site_groups],
+            },
+        )
+
+        self.assertHttpStatus(response, 302)
+        template = InterfaceTemplate.objects.get(name="Scoped Template")
+        self.assertEqual(set(template.scope_site_groups.all()), set(site_groups))
+        self.assertFalse(template.scope_sites.exists())
+
+        response = self.client.get(template.get_absolute_url())
+        for site_group in site_groups:
+            self.assertContains(response, site_group.get_absolute_url())
+
+    def test_add_form_renders_objects_of_selected_type(self):
+        """Selecting an object type re-renders the scope with a multiple selector of that type, like NetBox."""
+        self.add_permissions("interface_profiles.add_interfacetemplate", "dcim.view_sitegroup")
+        url = reverse("plugins:interface_profiles:interfacetemplate_add")
+
+        response = self.client.get(url)
+        self.assertHttpStatus(response, 200)
+        self.assertRegex(response.content.decode(), r'<select name="scope_object_id"[^>]*disabled')
+
+        response = self.client.get(url, {"scope_content_type": ContentType.objects.get_for_model(SiteGroup).pk})
+        content = response.content.decode()
+        self.assertRegex(content, r'<select name="scope_object_id"[^>]*data-url="/api/dcim/site-groups/"')
+        self.assertRegex(content, r'<select name="scope_object_id"[^>]*multiple')
+        self.assertIn('hx-target="#scope"', content)
+
+    def test_add_form_requires_objects_in_scope(self):
+        self.add_permissions("interface_profiles.add_interfacetemplate", "interface_profiles.view_interfacerole")
+
+        response = self.client.post(
+            reverse("plugins:interface_profiles:interfacetemplate_add"),
+            {
+                "interface_role": self.role.pk,
+                "name": "Unscoped Template",
+                "enabled": "on",
+                "scope_content_type": ContentType.objects.get_for_model(Site).pk,
+            },
+        )
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, "Please select a site.")
+        self.assertFalse(InterfaceTemplate.objects.filter(name="Unscoped Template").exists())
+
+    def test_edit_form_switches_to_global(self):
+        self.add_permissions(
+            "interface_profiles.change_interfacetemplate", "interface_profiles.view_interfacerole", "dcim.view_site"
+        )
+        site = Site.objects.create(name="Edit Site", slug="edit-site")
+        template = create_interface_template(site, interface_role=self.role, name="Edited Template")
+
+        response = self.client.get(reverse("plugins:interface_profiles:interfacetemplate_edit", args=[template.pk]))
+        self.assertHttpStatus(response, 200)
+        self.assertRegex(response.content.decode(), rf"<option value=\"{site.pk}\"\s+selected")
+
+        response = self.client.post(
+            reverse("plugins:interface_profiles:interfacetemplate_edit", args=[template.pk]),
+            {"interface_role": self.role.pk, "name": "Edited Template", "enabled": "on", "scope_content_type": ""},
+        )
+
+        self.assertHttpStatus(response, 302)
+        template.refresh_from_db()
+        self.assertIsNone(template.scope_type)
+        self.assertFalse(template.scope_sites.exists())
+
+    def test_bulk_edit_sets_scope(self):
+        self.add_permissions(
+            "interface_profiles.view_interfacetemplate", "interface_profiles.change_interfacetemplate", "dcim.view_site"
+        )
+        sites = [Site.objects.create(name=f"Bulk Site {i}", slug=f"bulk-site-{i}") for i in range(2)]
+        url = reverse("plugins:interface_profiles:interfacetemplate_bulk_edit")
+
+        response = self.client.post(
+            url,
+            {
+                "pk": [self.template.pk],
+                "_apply": True,
+                "scope_content_type": ContentType.objects.get_for_model(Site).pk,
+                "scope_object_id": [site.pk for site in sites],
+            },
+        )
+
+        self.assertHttpStatus(response, 302)
+        self.template.refresh_from_db()
+        self.assertEqual(self.template.scope_type.model, "site")
+        self.assertEqual(set(self.template.scope_sites.all()), set(sites))
+
+        # Other attributes leave the scope unchanged
+        response = self.client.post(url, {"pk": [self.template.pk], "_apply": True, "interface_description": "Bulk"})
+        self.assertHttpStatus(response, 302)
+        self.assertEqual(set(self.template.scope_sites.all()), set(sites))
+
+        response = self.client.post(url, {"pk": [self.template.pk], "_apply": True, "_nullify": ["scope"]})
+        self.assertHttpStatus(response, 302)
+        self.template.refresh_from_db()
+        self.assertIsNone(self.template.scope_type)
+        self.assertFalse(self.template.scope_sites.exists())
+
     def test_edit_form_renders_existing_values(self):
         self.add_permissions("interface_profiles.change_interfacetemplate")
 
@@ -1010,11 +1125,12 @@ class InterfaceTemplateViewTestCase(PluginViewTestCase):
             "ipam.view_vrf",
         )
         site = Site.objects.create(name="Import Site", slug="import-site")
+        other_site = Site.objects.create(name="Import Site 2", slug="import-site-2")
         data = f"""
 - interface_role: Template View Role
   name: Imported Template
   scope_type: dcim.site
-  scope_id: {site.pk}
+  scope_ids: "{site.pk},{other_site.pk}"
   mode: tagged
   tagged_vlans_vids: "10,20-21"
   vrf: "65000:10"
@@ -1028,8 +1144,53 @@ class InterfaceTemplateViewTestCase(PluginViewTestCase):
 
         self.assertHttpStatus(response, 302)
         template = InterfaceTemplate.objects.get(name="Imported Template")
-        self.assertEqual(template.scope, site)
+        self.assertEqual(set(template.scope_sites.all()), {site, other_site})
         self.assertEqual(template.tagged_vlans_vids, [10, 20, 21])
         self.assertEqual(template.vrf, self.vrf)
         self.assertEqual(template.poe_mode, "pd")
         self.assertIsNone(template.duplex)
+
+    def test_import_scope_names(self):
+        self.add_permissions(
+            "interface_profiles.view_interfacetemplate",
+            "interface_profiles.add_interfacetemplate",
+            "interface_profiles.change_interfacetemplate",
+            "interface_profiles.view_interfacerole",
+        )
+        site_groups = [SiteGroup.objects.create(name=f"Import SG {i}", slug=f"import-sg-{i}") for i in range(2)]
+        url = reverse("plugins:interface_profiles:interfacetemplate_import")
+
+        data = """
+- interface_role: Template View Role
+  name: Named Scope
+  scope_type: dcim.sitegroup
+  scope_names: [Import SG 0, Import SG 1]
+"""
+        response = self.client.post(url, {"data": data, "format": "yaml"})
+
+        self.assertHttpStatus(response, 302)
+        template = InterfaceTemplate.objects.get(name="Named Scope")
+        self.assertEqual(set(template.scope_site_groups.all()), set(site_groups))
+
+        # Updating other attributes leaves the scope unchanged
+        response = self.client.post(
+            url, {"data": f"id,description\n{template.pk},Updated", "format": "csv", "csv_delimiter": ","}
+        )
+        self.assertHttpStatus(response, 302)
+        self.assertEqual(set(template.scope_site_groups.all()), set(site_groups))
+
+        invalid = (
+            ("scope_type: dcim.sitegroup\n  scope_names: [Missing]", "Site Group &quot;Missing&quot; not found."),
+            ("scope_names: [Import SG 0]", "scope_type must be specified when using scope_names"),
+            (
+                f"scope_type: dcim.sitegroup\n  scope_names: [Import SG 0]\n  scope_ids: [{site_groups[0].pk}]",
+                "scope_names and scope_ids are mutually exclusive.",
+            ),
+            ("scope_type: dcim.sitegroup", "Please select a site group."),
+        )
+        for scope, message in invalid:
+            with self.subTest(scope=scope):
+                data = f"- interface_role: Template View Role\n  name: Invalid Scope\n  {scope}\n"
+                response = self.client.post(url, {"data": data, "format": "yaml"})
+                self.assertHttpStatus(response, 200)
+                self.assertContains(response, message)

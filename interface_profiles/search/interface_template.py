@@ -23,5 +23,5 @@ class InterfaceTemplateIndex(SearchIndex):
     display_attrs = (
         "name",
         "interface_role",
-        "scope",
+        "scope_type",
     )

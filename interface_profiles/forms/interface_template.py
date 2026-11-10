@@ -13,7 +13,7 @@ from dcim.constants import INTERFACE_MTU_MAX, INTERFACE_MTU_MIN
 from dcim.models import Site, SiteGroup
 from django import forms
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from ipam.constants import VLAN_VID_MAX, VLAN_VID_MIN
 from ipam.models import VRF, VLANTranslationPolicy
@@ -23,9 +23,8 @@ from netbox.forms import (
     NetBoxModelForm,
     NetBoxModelImportForm,
 )
-from utilities.forms import add_blank_choice, get_field_value
+from utilities.forms import add_blank_choice
 from utilities.forms.fields import (
-    ContentTypeChoiceField,
     CSVChoiceField,
     CSVContentTypeField,
     CSVModelChoiceField,
@@ -35,10 +34,12 @@ from utilities.forms.fields import (
 )
 from utilities.forms.rendering import FieldSet
 from utilities.forms.utils import parse_numeric_range
-from utilities.forms.widgets import BulkEditNullBooleanSelect, HTMXSelect, NumberWithOptions
+from utilities.forms.widgets import BulkEditNullBooleanSelect, NumberWithOptions
 from utilities.templatetags.builtins.filters import bettertitle
 
 from ..models import InterfaceRole, InterfaceTemplate
+from ..models.interface_template import SCOPE_RELATIONS
+from .fields import GenericObjectMultipleChoiceField
 
 INTERFACE_TEMPLATE_SCOPE_TYPES = ("site", "sitegroup")
 
@@ -76,19 +77,50 @@ def _scope_type_queryset():
     return ContentType.objects.filter(app_label="dcim", model__in=INTERFACE_TEMPLATE_SCOPE_TYPES)
 
 
-def _enable_scope_field(form: forms.Form) -> None:
-    """Limit the scope field to objects of the selected scope type."""
-    if scope_type_id := get_field_value(form, "scope_type"):
-        try:
-            scope_type = ContentType.objects.get(pk=scope_type_id)
-        except (ObjectDoesNotExist, ValueError):
-            return
-        model = scope_type.model_class()
-        field = form.fields["scope"]
-        field.queryset = model.objects.all()
-        field.widget.attrs["selector"] = model._meta.label_lower
-        field.disabled = False
-        field.label = _(bettertitle(model._meta.verbose_name))
+def _scope_values(scope_type: ContentType | None, scopes) -> dict[str, list]:
+    """Map the objects in scope to the scope relation of the scope type, leaving the other relations empty."""
+    selected = SCOPE_RELATIONS.get(scope_type.model) if scope_type else None
+    return {relation: list(scopes or []) if relation == selected else [] for relation in SCOPE_RELATIONS.values()}
+
+
+def _scope_type_of(scopes) -> ContentType | None:
+    """Return the content type of the objects selected in a GenericObjectMultipleChoiceField."""
+    return ContentType.objects.get_for_model(scopes.model) if scopes is not None else None
+
+
+class ScopeFormMixin:
+    """
+    Initialize and assign the scope field of the interface template forms.
+
+    The multiple choice counterpart of NetBox's GenericObjectFormMixin: seeds the field from the scope type and the
+    objects in scope of the template, and copies the cleaned objects to the scope relation of the selected type.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        field = self.fields["scope"]
+        instance = getattr(self, "instance", None)
+        # On an HTMX re-render the submitted subwidget values take precedence over the stored instance value
+        rerendered = any(f"scope_{suffix}" in self.initial for suffix in ("content_type", "object_id"))
+        if instance is not None and instance.pk and instance.scope_type_id and not self.is_bound and not rerendered:
+            self.initial["scope_content_type"] = instance.scope_type_id
+            self.initial["scope_object_id"] = instance.scope_ids
+        # Prepare eagerly, so restrict_form_fields() restricts the queryset of the selected model
+        field.prepare(self, "scope")
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if cleaned_data is None:
+            cleaned_data = self.cleaned_data
+
+        if "scope" in cleaned_data:
+            scope_type = _scope_type_of(cleaned_data["scope"])
+            self.instance.scope_type = scope_type
+            # NetBoxModelForm saves the scope relations, as they are not part of Meta.fields
+            cleaned_data.update(_scope_values(scope_type, cleaned_data["scope"]))
+
+        return cleaned_data
 
 
 class UnchangedNullBooleanSelect(forms.NullBooleanSelect):
@@ -118,25 +150,20 @@ class TaggedVLANVIDsField(forms.CharField):
         return parse_numeric_range(value, min_value=VLAN_VID_MIN, max_value=VLAN_VID_MAX)
 
 
-class InterfaceTemplateForm(NetBoxModelForm):
+class InterfaceTemplateForm(ScopeFormMixin, NetBoxModelForm):
     """Create / Edit form for InterfaceTemplate."""
 
     interface_role = DynamicModelChoiceField(
         queryset=InterfaceRole.objects.all(),
         label=_("Interface Role"),
     )
-    scope_type = ContentTypeChoiceField(
-        queryset=_scope_type_queryset(),
-        widget=HTMXSelect(),
-        required=False,
-        label=_("Scope type"),
-    )
-    scope = DynamicModelChoiceField(
+    scope = GenericObjectMultipleChoiceField(
         label=_("Scope"),
-        queryset=Site.objects.none(),
+        content_type_queryset=_scope_type_queryset(),
         required=False,
-        disabled=True,
         selector=True,
+        hx_target_id="scope",
+        help_text=_("The sites or site groups the template applies to. Leave empty for a global template."),
     )
     mgmt_only = forms.NullBooleanField(
         required=False,
@@ -186,7 +213,7 @@ class InterfaceTemplateForm(NetBoxModelForm):
     tagged_vlans_vids = TaggedVLANVIDsField(required=False, label=_("Tagged VLAN VIDs"))
 
     fieldsets = (
-        FieldSet("interface_role", "scope_type", "scope", name=_("Scope")),
+        FieldSet("interface_role", "scope", name=_("Scope"), html_id="scope"),
         FieldSet("name", "description", "tags", name=_("Interface Template")),
         FieldSet(
             "enabled",
@@ -222,25 +249,30 @@ class InterfaceTemplateForm(NetBoxModelForm):
 
     class Meta:
         model = InterfaceTemplate
-        fields = ("interface_role", "scope_type", "name", "description", *ATTRIBUTE_FIELDS, "tags")
+        fields = ("interface_role", "name", "description", *ATTRIBUTE_FIELDS, "tags")
 
-    def __init__(self, *args, **kwargs):
-        instance = kwargs.get("instance")
-        initial = kwargs.get("initial", {})
 
-        if instance is not None and instance.scope:
-            initial["scope"] = instance.scope
-            kwargs["initial"] = initial
+class CSVListField(forms.Field):
+    """A list of values, entered as a list or as comma-separated values, e.g. `1,2,3`."""
 
-        super().__init__(*args, **kwargs)
+    def to_python(self, value):
+        if value in self.empty_values:
+            return []
+        if isinstance(value, str):
+            value = value.split(",")
+        elif not isinstance(value, (list, tuple)):
+            value = [value]
+        return [item for item in (str(item).strip() for item in value) if item]
 
-        _enable_scope_field(self)
-        if self.instance and get_field_value(self, "scope_type") != self.instance.scope_type_id:
-            self.initial["scope"] = None
 
-    def clean(self):
-        super().clean()
-        self.instance.scope = self.cleaned_data.get("scope")
+class ScopeIDsField(CSVListField):
+    """A list of object IDs, entered as a list or as comma-separated numbers, e.g. `1,2,3`."""
+
+    def to_python(self, value):
+        try:
+            return [int(pk) for pk in super().to_python(value)]
+        except ValueError:
+            raise forms.ValidationError(_("Enter a list of IDs, e.g. 1,2,3.")) from None
 
 
 class InterfaceTemplateImportForm(NetBoxModelImportForm):
@@ -255,8 +287,18 @@ class InterfaceTemplateImportForm(NetBoxModelImportForm):
     scope_type = CSVContentTypeField(
         queryset=_scope_type_queryset(),
         required=False,
-        label=_("Scope type"),
+        label=_("Scope type (app & model)"),
         help_text=_("dcim.site or dcim.sitegroup. Leave empty for a global template."),
+    )
+    scope_ids = ScopeIDsField(
+        required=False,
+        label=_("Scope IDs"),
+        help_text=_("IDs of the sites or site groups in scope, e.g. 1,2,3"),
+    )
+    scope_names = CSVListField(
+        required=False,
+        label=_("Scope names"),
+        help_text=_("Names of the sites or site groups in scope (if not using IDs)"),
     )
     duplex = CSVChoiceField(choices=InterfaceDuplexChoices, required=False, label=_("Duplex"))
     mode = CSVChoiceField(choices=InterfaceModeChoices, required=False, label=_("802.1Q mode"))
@@ -279,7 +321,84 @@ class InterfaceTemplateImportForm(NetBoxModelImportForm):
 
     class Meta:
         model = InterfaceTemplate
-        fields = ("interface_role", "scope_type", "scope_id", "name", "description", *ATTRIBUTE_FIELDS, "tags")
+        fields = ("interface_role", "scope_type", "name", "description", *ATTRIBUTE_FIELDS, "tags")
+
+    def clean(self):
+        super().clean()
+        scope_fields = {"scope_type", "scope_ids", "scope_names"} & set(self.fields)
+        # Updates only include the fields of the record, the scope is left unchanged when all are omitted
+        if not scope_fields:
+            return self.cleaned_data
+
+        scope_type = self.cleaned_data.get("scope_type") if "scope_type" in self.fields else self.instance.scope_type
+        scope_ids = self.cleaned_data.get("scope_ids") or []
+        scope_names = self.cleaned_data.get("scope_names") or []
+
+        # Validated like NetBox's ScopedImportForm, for multiple objects
+        if scope_names and scope_ids:
+            raise ValidationError(_("scope_names and scope_ids are mutually exclusive."))
+        if scope_names and not scope_type:
+            raise ValidationError(_("scope_type must be specified when using scope_names"))
+        if scope_ids and not scope_type:
+            raise ValidationError(_("scope_type must be specified when using scope_ids"))
+
+        if scope_fields == {"scope_type"} and scope_type == self.instance.scope_type and self.instance.pk:
+            # Keep the objects in scope of an existing template when only the (unchanged) scope type is given
+            scopes = list(self.instance.scope_objects or [])
+        elif scope_type and scope_names:
+            scopes = self._get_scopes_by_name(scope_type.model_class(), scope_names)
+        elif scope_type and scope_ids:
+            model = scope_type.model_class()
+            scopes = list(model.objects.filter(pk__in=scope_ids))
+            if missing := sorted(set(scope_ids) - {scope.pk for scope in scopes}):
+                raise ValidationError(
+                    {
+                        "scope_ids": _("{scope_type} not found: {ids}").format(
+                            scope_type=bettertitle(model._meta.verbose_name_plural),
+                            ids=", ".join(str(pk) for pk in missing),
+                        )
+                    }
+                )
+        elif scope_type:
+            raise ValidationError(
+                {
+                    "scope_ids": _("Please select a {scope_type}.").format(
+                        scope_type=scope_type.model_class()._meta.verbose_name
+                    )
+                }
+            )
+        else:
+            scopes = []
+
+        self.instance.scope_type = scope_type
+        # NetBoxModelForm saves the scope relations, as they are not part of Meta.fields
+        self.cleaned_data.update(_scope_values(scope_type, scopes))
+        return self.cleaned_data
+
+    @staticmethod
+    def _get_scopes_by_name(model, names: list[str]) -> list:
+        scopes = []
+        for name in names:
+            try:
+                scopes.append(model.objects.get(name=name))
+            except model.DoesNotExist:
+                raise ValidationError(
+                    {
+                        "scope_names": _('{scope_type} "{name}" not found.').format(
+                            scope_type=bettertitle(model._meta.verbose_name), name=name
+                        )
+                    }
+                ) from None
+            except model.MultipleObjectsReturned:
+                raise ValidationError(
+                    {
+                        "scope_names": _(
+                            'Multiple {scope_type} objects match "{name}". Use scope_ids to specify the intended '
+                            "object."
+                        ).format(scope_type=bettertitle(model._meta.verbose_name), name=name)
+                    }
+                ) from None
+        return scopes
 
     def clean_duplex(self):
         return self.cleaned_data["duplex"] or None
@@ -294,7 +413,7 @@ class InterfaceTemplateImportForm(NetBoxModelImportForm):
         return self.cleaned_data["poe_type"] or None
 
 
-class InterfaceTemplateBulkEditForm(NetBoxModelBulkEditForm):
+class InterfaceTemplateBulkEditForm(ScopeFormMixin, NetBoxModelBulkEditForm):
     """Bulk edit form for InterfaceTemplate."""
 
     model = InterfaceTemplate
@@ -308,18 +427,12 @@ class InterfaceTemplateBulkEditForm(NetBoxModelBulkEditForm):
         required=False,
         label=_("Interface Role"),
     )
-    scope_type = ContentTypeChoiceField(
-        queryset=_scope_type_queryset(),
-        widget=HTMXSelect(method="post", attrs={"hx-select": "#form_fields"}),
-        required=False,
-        label=_("Scope type"),
-    )
-    scope = DynamicModelChoiceField(
+    scope = GenericObjectMultipleChoiceField(
         label=_("Scope"),
-        queryset=Site.objects.none(),
+        content_type_queryset=_scope_type_queryset(),
         required=False,
-        disabled=True,
         selector=True,
+        hx_method="post",
     )
     description = forms.CharField(required=False, label=_("Description"))
     enabled = forms.NullBooleanField(required=False, widget=BulkEditNullBooleanSelect(), label=_("Enabled"))
@@ -374,7 +487,7 @@ class InterfaceTemplateBulkEditForm(NetBoxModelBulkEditForm):
     )
 
     fieldsets = (
-        FieldSet("interface_role", "scope_type", "scope", name=_("Scope")),
+        FieldSet("interface_role", "scope", name=_("Scope")),
         FieldSet("description", name=_("Interface Template")),
         FieldSet("enabled", "mgmt_only", "interface_description", "set_null_interface_description", name=_("General")),
         FieldSet("speed", "set_null_speed", "duplex", "set_null_duplex", "mtu", "set_null_mtu", name=_("Physical")),
@@ -410,9 +523,18 @@ class InterfaceTemplateBulkEditForm(NetBoxModelBulkEditForm):
         "poe_type",
     )
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        _enable_scope_field(self)
+    def clean(self):
+        # The scope is applied per template by InterfaceTemplateBulkEditView, when changed or nullified
+        return super(ScopeFormMixin, self).clean()
+
+    def get_scope(self, nullify: bool) -> tuple[ContentType | None, dict[str, list]] | None:
+        """Return the scope type and the scope relations to save, or None when the scope is left unchanged."""
+        if nullify:
+            return None, _scope_values(None, [])
+        if "scope" in self.changed_data:
+            scope_type = _scope_type_of(self.cleaned_data["scope"])
+            return scope_type, _scope_values(scope_type, self.cleaned_data["scope"])
+        return None
 
 
 class InterfaceTemplateFilterSetForm(NetBoxModelFilterSetForm):

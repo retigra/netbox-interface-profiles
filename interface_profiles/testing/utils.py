@@ -421,3 +421,15 @@ __all__ = [
     "get_deletable_objects",
     "assert_object_changes",
 ]
+
+
+def create_interface_template(*scopes, **fields):
+    """Create an InterfaceTemplate scoped to the given sites or site groups, or a global one without scopes."""
+    from ..models import InterfaceTemplate
+
+    template = InterfaceTemplate.objects.create(
+        scope_type=ContentType.objects.get_for_model(scopes[0]) if scopes else None, **fields
+    )
+    if scopes:
+        getattr(template, template.scope_relation).set(scopes)
+    return template

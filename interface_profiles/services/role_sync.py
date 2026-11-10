@@ -11,7 +11,21 @@ from dcim.models import Interface, Site, SiteGroup
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import NON_FIELD_ERRORS, FieldDoesNotExist, ValidationError
 from django.db import transaction
-from django.db.models import Case, Field, ForeignKey, IntegerField, ManyToManyField, Model, Q, QuerySet, Value, When
+from django.db.models import (
+    Case,
+    Exists,
+    Field,
+    ForeignKey,
+    IntegerField,
+    ManyToManyField,
+    Model,
+    OuterRef,
+    Q,
+    QuerySet,
+    Subquery,
+    Value,
+    When,
+)
 from ipam.models import VLAN
 from utilities.exceptions import AbortRequest
 
@@ -39,27 +53,46 @@ def get_matching_templates(interface, interface_role) -> QuerySet[InterfaceTempl
 
     site_ct = ContentType.objects.get_for_model(Site)
     site_group_ct = ContentType.objects.get_for_model(SiteGroup)
+    global_priority = len(site_group_ids) + 1
 
-    scope_q = Q(scope_type__isnull=True)  # global
-    if site:
-        scope_q |= Q(scope_type=site_ct, scope_id=site.pk)
-    if site_group_ids:
-        scope_q |= Q(scope_type=site_group_ct, scope_id__in=site_group_ids)
+    # Whether the site is in scope, and the depth of the nearest site group in scope (1 for the site's own group)
+    site_in_scope = Exists(
+        InterfaceTemplate.scope_sites.through.objects.filter(interfacetemplate=OuterRef("pk"), site=site)
+    )
+    site_group_depth = (
+        Subquery(
+            InterfaceTemplate.scope_site_groups.through.objects.filter(
+                interfacetemplate=OuterRef("pk"), sitegroup__in=site_group_ids
+            )
+            .annotate(
+                depth=Case(
+                    *(
+                        When(sitegroup=group_id, then=Value(depth))
+                        for depth, group_id in enumerate(site_group_ids, start=1)
+                    ),
+                    output_field=IntegerField(),
+                )
+            )
+            .order_by("depth")
+            .values("depth")[:1],
+            output_field=IntegerField(),
+        )
+        if site_group_ids
+        else Value(None, output_field=IntegerField())
+    )
 
     return (
         InterfaceTemplate.objects.filter(interface_role=interface_role)
-        .filter(scope_q)
         .annotate(
             scope_priority=Case(
-                When(scope_type=site_ct, then=Value(0)),
-                *(
-                    When(scope_type=site_group_ct, scope_id=group_id, then=Value(depth))
-                    for depth, group_id in enumerate(site_group_ids, start=1)
-                ),
-                default=Value(len(site_group_ids) + 1),
+                When(scope_type__isnull=True, then=Value(global_priority)),
+                When(Q(scope_type=site_ct) & site_in_scope, then=Value(0)),
+                When(scope_type=site_group_ct, then=site_group_depth),
+                default=Value(None),
                 output_field=IntegerField(),
             )
         )
+        .filter(scope_priority__isnull=False)
         .order_by("scope_priority", "pk")
     )
 

@@ -11,7 +11,14 @@ from ..models import InterfaceTemplate
 class InterfaceTemplateTable(NetBoxTable):
     name = tables.Column(linkify=True)
     interface_role = tables.Column(linkify=True)
-    scope = tables.Column(verbose_name="Scope", default="—", orderable=False, linkify=True)
+    scope_type = columns.ContentTypeColumn(verbose_name="Scope type")
+    scopes = columns.ManyToManyColumn(
+        accessor=tables.A("scope_objects"),
+        verbose_name="Scope",
+        default="—",
+        orderable=False,
+        linkify_item=True,
+    )
     enabled = columns.BooleanColumn()
     mgmt_only = columns.BooleanColumn(verbose_name="Management only")
     interface_description = tables.Column(verbose_name="Interface description")
@@ -50,7 +57,8 @@ class InterfaceTemplateTable(NetBoxTable):
             "id",
             "name",
             "interface_role",
-            "scope",
+            "scope_type",
+            "scopes",
             "description",
             "enabled",
             "mgmt_only",
@@ -85,7 +93,8 @@ class InterfaceTemplateTable(NetBoxTable):
         default_columns = (
             "name",
             "interface_role",
-            "scope",
+            "scope_type",
+            "scopes",
             "mode",
             "untagged_vlan_vid",
             "tagged_vlans_vids",

@@ -2,9 +2,7 @@
 InterfaceTemplate serializer for interface profiles API.
 """
 
-from dcim.api.serializers import SiteGroupSerializer, SiteSerializer
 from dcim.choices import InterfaceDuplexChoices, InterfaceModeChoices, InterfacePoEModeChoices, InterfacePoETypeChoices
-from dcim.models import Site, SiteGroup
 from django.contrib.contenttypes.models import ContentType
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field
@@ -13,8 +11,10 @@ from ipam.constants import VLAN_VID_MAX, VLAN_VID_MIN
 from netbox.api.fields import ChoiceField, ContentTypeField
 from netbox.api.serializers import NetBoxModelSerializer
 from rest_framework import serializers
+from utilities.api import get_serializer_for_model
 
 from ...models import InterfaceTemplate
+from ...models.interface_template import SCOPE_RELATIONS
 from .interface_role import InterfaceRoleSerializer
 
 
@@ -32,8 +32,12 @@ class InterfaceRoleTemplateSerializer(NetBoxModelSerializer):
         required=False,
         allow_null=True,
     )
-    scope_id = serializers.IntegerField(required=False, allow_null=True)
-    scope = serializers.SerializerMethodField(read_only=True)
+    scope_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1),
+        required=False,
+        help_text="IDs of the sites or site groups in scope, depending on the scope type.",
+    )
+    scopes = serializers.SerializerMethodField(read_only=True)
     duplex = ChoiceField(choices=InterfaceDuplexChoices, required=False, allow_blank=True, allow_null=True)
     mode = ChoiceField(choices=InterfaceModeChoices, required=False, allow_blank=True, allow_null=True)
     poe_mode = ChoiceField(choices=InterfacePoEModeChoices, required=False, allow_blank=True, allow_null=True)
@@ -56,8 +60,8 @@ class InterfaceRoleTemplateSerializer(NetBoxModelSerializer):
             "description",
             "interface_role",
             "scope_type",
-            "scope_id",
-            "scope",
+            "scope_ids",
+            "scopes",
             "enabled",
             "mgmt_only",
             "interface_description",
@@ -95,18 +99,44 @@ class InterfaceRoleTemplateSerializer(NetBoxModelSerializer):
         for field in ("duplex", "mode", "poe_mode", "poe_type"):
             if data.get(field) == "":
                 data[field] = None
+        if not self.nested:
+            self._validate_scope(data)
         return super().validate(data)
 
+    def _validate_scope(self, data):
+        """Replace scope_ids by the scope relation of the scope type, which is validated and saved as M2M field."""
+        scope_ids = data.pop("scope_ids", None)
+        scope_type = data["scope_type"] if "scope_type" in data else getattr(self.instance, "scope_type", None)
+        if scope_ids is None:
+            # Changing the scope type of an existing template needs new objects in scope
+            if "scope_type" not in data or self.instance is None or scope_type == self.instance.scope_type:
+                return
+            scope_ids = []
+        if scope_ids and scope_type is None:
+            raise serializers.ValidationError({"scope_type": "Please select a scope type."})
+
+        scopes = []
+        if scope_type is not None:
+            scopes = list(scope_type.model_class().objects.filter(pk__in=scope_ids))
+            if missing := sorted(set(scope_ids) - {scope.pk for scope in scopes}):
+                raise serializers.ValidationError(
+                    {
+                        "scope_ids": "Related objects not found using the provided values: "
+                        f"{', '.join(map(str, missing))}."
+                    }
+                )
+        selected = SCOPE_RELATIONS.get(scope_type.model) if scope_type else None
+        for relation in SCOPE_RELATIONS.values():
+            data[relation] = scopes if relation == selected else []
+
     @extend_schema_field(OpenApiTypes.OBJECT)
-    def get_scope(self, obj):
-        if obj.scope is None:
-            return None
-        request = self.context.get("request")
-        if isinstance(obj.scope, Site):
-            return SiteSerializer(obj.scope, nested=True, context={"request": request}).data
-        if isinstance(obj.scope, SiteGroup):
-            return SiteGroupSerializer(obj.scope, nested=True, context={"request": request}).data
-        return str(obj.scope)
+    def get_scopes(self, obj):
+        scopes = obj.scope_objects
+        if scopes is None:
+            return []
+        # Serialized like NetBox's GFKSerializerField, for multiple objects
+        serializer = get_serializer_for_model(scopes.model)
+        return serializer(scopes, many=True, nested=True, context={"request": self.context.get("request")}).data
 
 
 # NetBox resolves the serializer of a model as <ModelName>Serializer, e.g. for event rules and change logging

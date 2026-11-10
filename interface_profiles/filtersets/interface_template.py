@@ -86,12 +86,14 @@ class InterfaceTemplateFilterSet(NetBoxModelFilterSet):
     def filter_scope_site(self, queryset, name, value):
         if not value:
             return queryset
-        return queryset.filter(scope_type=ContentType.objects.get_for_model(Site), scope_id__in=value)
+        return queryset.filter(scope_type=ContentType.objects.get_for_model(Site), scope_sites__in=value).distinct()
 
     def filter_scope_site_group(self, queryset, name, value):
         if not value:
             return queryset
-        return queryset.filter(scope_type=ContentType.objects.get_for_model(SiteGroup), scope_id__in=value)
+        return queryset.filter(
+            scope_type=ContentType.objects.get_for_model(SiteGroup), scope_site_groups__in=value
+        ).distinct()
 
     def filter_tagged_vlan_vid(self, queryset, name, value):
         if value is None:

@@ -6,8 +6,7 @@ from typing import Any, cast
 
 from dcim.choices import InterfaceDuplexChoices, InterfaceModeChoices, InterfacePoEModeChoices, InterfacePoETypeChoices
 from dcim.constants import INTERFACE_MTU_MAX, INTERFACE_MTU_MIN
-from django.contrib.contenttypes.fields import GenericForeignKey
-from django.core.exceptions import ValidationError
+from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.urls import reverse
@@ -44,6 +43,12 @@ NULLABLE_TEMPLATE_FIELDS = (
     "qinq_svlan_vid",
 )
 
+# The relation holding the objects in scope, by the model of the scope type
+SCOPE_RELATIONS = {
+    "site": "scope_sites",
+    "sitegroup": "scope_site_groups",
+}
+
 VID_VALIDATORS = (MinValueValidator(VLAN_VID_MIN), MaxValueValidator(VLAN_VID_MAX))
 
 
@@ -53,7 +58,10 @@ def _set_null_field(verbose_name: str, help_text: str):
 
 class InterfaceTemplate(NetBoxModel):
     """
-    The interface attributes an InterfaceRole applies, globally or scoped to a Site or SiteGroup.
+    The interface attributes an InterfaceRole applies, globally or scoped to Sites or SiteGroups.
+
+    The scope type selects which of the scope relations holds the scope, the other one is always empty. A template
+    without a scope type is global.
 
     Empty attributes leave the interface unchanged, unless their set_null_<field> flag is enabled. VLANs are
     referenced by VID, so one template works in every site even though each site has its own VLAN objects.
@@ -66,8 +74,18 @@ class InterfaceTemplate(NetBoxModel):
         related_name="interface_templates",
     )
     scope_type = models.ForeignKey(to="contenttypes.ContentType", on_delete=models.CASCADE, blank=True, null=True)
-    scope_id = models.PositiveBigIntegerField(blank=True, null=True)
-    scope = GenericForeignKey(ct_field="scope_type", fk_field="scope_id")
+    scope_sites = models.ManyToManyField(
+        to="dcim.Site",
+        related_name="interface_role_templates",
+        blank=True,
+        verbose_name="Sites",
+    )
+    scope_site_groups = models.ManyToManyField(
+        to="dcim.SiteGroup",
+        related_name="interface_role_templates",
+        blank=True,
+        verbose_name="Site groups",
+    )
 
     # Template identification
     name = models.CharField(max_length=100)
@@ -220,9 +238,8 @@ class InterfaceTemplate(NetBoxModel):
 
         errors: dict[str, str] = {}
 
-        # NetBox validates a scope type without a scope, but not the other way around
-        if self.scope_id is not None and self.scope_type is None:
-            errors["scope_type"] = "Set the type of the scope, or no scope for a global template."
+        if scope_error := self._clean_scope():
+            errors[NON_FIELD_ERRORS] = scope_error
 
         vids = self.tagged_vlans_vids
         if not isinstance(vids, list) or not all(
@@ -243,6 +260,49 @@ class InterfaceTemplate(NetBoxModel):
 
         if errors:
             raise ValidationError(errors)
+
+    def _scope_relation_pks(self, relation: str) -> list[int]:
+        """Return the primary keys of a scope relation, preferring the values being saved by a form or the API."""
+        m2m_values = getattr(self, "_m2m_values", {})
+        if relation in m2m_values:
+            return [getattr(value, "pk", value) for value in m2m_values[relation]]
+        if self.pk:
+            return list(getattr(self, relation).values_list("pk", flat=True))
+        return []
+
+    def _clean_scope(self) -> str | None:
+        """Validate the objects in scope like NetBox validates the scope of a VLAN group, for multiple objects."""
+        selected = {relation: self._scope_relation_pks(relation) for relation in SCOPE_RELATIONS.values()}
+        if self.scope_type is None:
+            return "Please select a scope type." if any(selected.values()) else None
+
+        model = self.scope_type.model_class()
+        for relation, pks in selected.items():
+            if relation != self.scope_relation and pks:
+                return (
+                    f"{cast(Any, self)._meta.get_field(relation).verbose_name} cannot be selected for a "
+                    f"{model._meta.verbose_name} scope."
+                )
+        if not selected.get(self.scope_relation):
+            return f"Please select a {model._meta.verbose_name}."
+        return None
+
+    @property
+    def scope_relation(self) -> str | None:
+        """Name of the relation holding the objects in scope, or None for a global template."""
+        return SCOPE_RELATIONS.get(self.scope_type.model) if self.scope_type else None
+
+    @property
+    def scope_objects(self):
+        """The sites or site groups in scope, or None for a global template."""
+        relation = self.scope_relation
+        return getattr(self, relation).all() if relation else None
+
+    @property
+    def scope_ids(self) -> list[int]:
+        """IDs of the sites or site groups in scope."""
+        scopes = self.scope_objects
+        return [scope.pk for scope in scopes] if scopes is not None else []
 
     def _has_value(self, field: str) -> bool:
         return getattr(self, cast(Any, self)._meta.get_field(field).attname) not in (None, "")
