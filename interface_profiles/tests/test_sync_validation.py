@@ -118,7 +118,7 @@ class AssignmentValidationAPITestCase(InvalidRoleMixin, PluginAPITestCase):
 
 class SyncJobValidationTestCase(InvalidRoleMixin, PluginViewTestCase):
     def test_failed_sync_notifies_user_and_shows_error(self):
-        self.add_permissions("interface_profiles.view_rolesync")
+        self.add_permissions("dcim.change_interface", "interface_profiles.view_rolesync")
 
         # Assign while the role has no template yet, so the assignment itself goes through
         template = InterfaceTemplate.objects.get(interface_role=self.role)

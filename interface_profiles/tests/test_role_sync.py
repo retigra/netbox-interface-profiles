@@ -11,6 +11,9 @@ from dcim.models import Device, DeviceRole, DeviceType, Interface, Manufacturer,
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from ipam.models import VLAN, VLANGroup
+from users.models import ObjectPermission
+from utilities.exceptions import AbortRequest
+from utilities.permissions import resolve_permission_type
 
 from ..jobs import SyncInterfaceRoleJob
 from ..models import InterfaceRole, InterfaceRoleAssignment, InterfaceTemplate, RoleSync, RoleSyncChange
@@ -128,9 +131,70 @@ class RunRoleSyncTestCase(RoleSyncTestMixin, PluginViewTestCase):
         self.assertEqual(RoleSyncChange.objects.filter(sync=sync).count(), 1)
 
 
+class RoleSyncPermissionTestCase(RoleSyncTestMixin, PluginViewTestCase):
+    """A synchronization may only change interfaces its user is permitted to change."""
+
+    def add_interface_change_permission(self, constraints):
+        object_type, _ = resolve_permission_type("dcim.change_interface")
+        permission = ObjectPermission.objects.create(
+            name="Change interfaces", actions=["change"], constraints=constraints
+        )
+        permission.users.add(self.user)
+        permission.object_types.add(object_type)
+
+    def assertInterfaceUnchanged(self):
+        self.interface.refresh_from_db()
+        self.assertFalse(self.interface.enabled)
+        self.assertIsNone(self.interface.mtu)
+
+    def test_sync_within_constraints_changes_interfaces(self):
+        self.add_interface_change_permission({"device__name": "Device-Sync"})
+
+        changes = run_role_sync(self.create_sync(dry_run=False, user=self.user))
+
+        self.assertEqual(len(changes), 1)
+        self.interface.refresh_from_db()
+        self.assertTrue(self.interface.enabled)
+
+    def test_sync_of_interface_outside_constraints_is_rejected(self):
+        self.add_interface_change_permission({"device__name": "Other Device"})
+
+        for dry_run in (True, False):
+            with self.subTest(dry_run=dry_run):
+                sync = self.create_sync(dry_run=dry_run, user=self.user)
+                with self.assertRaisesMessage(AbortRequest, "not permitted to change Device-Sync eth0"):
+                    run_role_sync(sync)
+
+                self.assertInterfaceUnchanged()
+                self.assertFalse(RoleSyncChange.objects.filter(sync=sync).exists())
+
+    def test_sync_resulting_in_interface_outside_constraints_is_rejected(self):
+        """Constraints also apply to the interface after synchronization, as in NetBox's edit views."""
+        self.add_interface_change_permission({"enabled": False})
+
+        with self.assertRaises(AbortRequest):
+            run_role_sync(self.create_sync(dry_run=False, user=self.user))
+
+        self.assertInterfaceUnchanged()
+
+    def test_job_fails_when_sync_is_not_permitted(self):
+        sync = self.create_sync(dry_run=False, user=self.user)
+
+        SyncInterfaceRoleJob.handle(sync.job)
+
+        job = Job.objects.get(interface_role_sync=sync)
+        self.assertEqual(job.status, JobStatusChoices.STATUS_FAILED)
+        self.assertIn("not permitted", job.error)
+        self.assertInterfaceUnchanged()
+
+
 class RoleSyncViewTestCase(RoleSyncTestMixin, PluginViewTestCase):
     def test_sync_view_creates_sync_and_redirects_to_it(self):
-        self.add_permissions("dcim.change_interface", "interface_profiles.view_rolesync")
+        self.add_permissions(
+            "dcim.change_interface",
+            "interface_profiles.view_interfacerole",
+            "interface_profiles.view_rolesync",
+        )
 
         url = reverse("plugins:interface_profiles:interfacerole_sync", kwargs={"pk": self.role.pk})
         response = self.client.post(url, {"dry_run": "on"})

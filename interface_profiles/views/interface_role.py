@@ -91,7 +91,7 @@ class InterfaceRoleSyncView(View):
         if not self._has_permission(request):
             return HttpResponseForbidden()
 
-        role = get_object_or_404(models.InterfaceRole.objects.all(), pk=pk)
+        role = get_object_or_404(models.InterfaceRole.objects.restrict(request.user, "view"), pk=pk)
         form = forms.InterfaceRoleSyncForm()
         return render(
             request,
@@ -106,7 +106,7 @@ class InterfaceRoleSyncView(View):
         if not self._has_permission(request):
             return HttpResponseForbidden()
 
-        role = get_object_or_404(models.InterfaceRole.objects.all(), pk=pk)
+        role = get_object_or_404(models.InterfaceRole.objects.restrict(request.user, "view"), pk=pk)
         form = forms.InterfaceRoleSyncForm(request.POST)
         if not form.is_valid():
             return render(

@@ -4,6 +4,7 @@ InterfaceRoleAssignment forms for interface profiles.
 
 from dcim.models import Device, Interface
 from django import forms
+from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 from netbox.forms import (
     NetBoxModelBulkEditForm,
@@ -95,14 +96,14 @@ class DeviceBulkAssignRoleForm(forms.Form):
         required=False,
     )
 
-    def __init__(self, device=None, *args, **kwargs):
+    def __init__(self, device=None, user=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Only offer roles the user may view
+        queryset = InterfaceRole.objects.restrict(user, "view") if user is not None else InterfaceRole.objects.all()
         # Filter roles based on device role if device is provided
         if device:
-            self.fields["interface_role"].queryset = InterfaceRole.objects.filter(
-                device_roles__isnull=True
-            ) | InterfaceRole.objects.filter(device_roles=device.role)
-            self.fields["interface_role"].queryset = self.fields["interface_role"].queryset.distinct().order_by("name")
+            queryset = queryset.filter(Q(device_roles__isnull=True) | Q(device_roles=device.role)).distinct()
+        self.fields["interface_role"].queryset = queryset.order_by("name")
 
 
 class InterfaceRoleAssignmentFilterSetForm(NetBoxModelFilterSetForm):

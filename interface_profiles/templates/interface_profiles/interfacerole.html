@@ -6,7 +6,9 @@
       <div class="card">
         <h5 class="card-header d-flex justify-content-between align-items-center">
           <span>Interface Role</span>
-          <a class="btn btn-sm btn-primary" href="{% url 'plugins:interface_profiles:interfacerole_sync' pk=object.pk %}">Synchronize Role</a>
+          {% if perms.dcim.change_interface and perms.interface_profiles.view_rolesync %}
+            <a class="btn btn-sm btn-primary" href="{% url 'plugins:interface_profiles:interfacerole_sync' pk=object.pk %}">Synchronize Role</a>
+          {% endif %}
         </h5>
         <table class="table table-hover attr-table">
           <tr>
@@ -31,6 +33,7 @@
     </div>
   </div>
 
+  {% if perms.interface_profiles.view_interfacetemplate %}
   <div class="row mb-3">
     <div class="col col-12">
       <div class="card">
@@ -46,7 +49,9 @@
       </div>
     </div>
   </div>
+  {% endif %}
 
+  {% if perms.interface_profiles.view_profileconfigtemplate %}
   <div class="row mb-3">
     <div class="col col-12">
       <div class="card">
@@ -55,4 +60,5 @@
       </div>
     </div>
   </div>
+  {% endif %}
 {% endblock %}
