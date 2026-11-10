@@ -7,25 +7,34 @@ https://docs.netbox.dev/en/stable/plugins/development/navigation/
 
 from netbox.plugins import PluginMenu, PluginMenuButton, PluginMenuItem
 
+APP_LABEL = "interface_profiles"
+
 
 def _menu_item(model_name: str, link_text: str) -> PluginMenuItem:
-    """Build a menu item linking to a model's list view, with Add and Import buttons."""
+    """
+    Build a menu item linking to a model's list view, with Add and Import buttons.
+
+    Mirrors NetBox's own `get_model_item()`: the item requires view permission and both buttons add permission,
+    so NetBox hides what the user may not use, and the whole menu when nothing is left.
+    """
     return PluginMenuItem(
-        link=f"plugins:interface_profiles:{model_name}_list",
+        link=f"plugins:{APP_LABEL}:{model_name}_list",
         link_text=link_text,
+        permissions=[f"{APP_LABEL}.view_{model_name}"],
         buttons=(
             PluginMenuButton(
-                link=f"plugins:interface_profiles:{model_name}_add",
+                link=f"plugins:{APP_LABEL}:{model_name}_add",
                 title="Add",
                 icon_class="mdi mdi-plus-thick",
+                permissions=[f"{APP_LABEL}.add_{model_name}"],
             ),
             PluginMenuButton(
-                link=f"plugins:interface_profiles:{model_name}_import",
+                link=f"plugins:{APP_LABEL}:{model_name}_import",
                 title="Import",
                 icon_class="mdi mdi-upload",
+                permissions=[f"{APP_LABEL}.add_{model_name}"],
             ),
         ),
-        auth_required=True,
     )
 
 
@@ -35,9 +44,9 @@ roles = (
     _menu_item("interfacerole", "Interface Roles"),
     _menu_item("interfaceroleassignment", "Assignments"),
     PluginMenuItem(
-        link="plugins:interface_profiles:rolesync_list",
+        link=f"plugins:{APP_LABEL}:rolesync_list",
         link_text="Synchronizations",
-        permissions=["interface_profiles.view_rolesync"],
+        permissions=[f"{APP_LABEL}.view_rolesync"],
     ),
 )
 

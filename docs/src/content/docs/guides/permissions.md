@@ -46,9 +46,20 @@ The device tab and the role menu only offer the roles the user may assign.
 | Task                                   | Required permissions                                                         |
 | -------------------------------------- | ---------------------------------------------------------------------------- |
 | See the device **Interface Roles** tab | `interface_profiles.view_interfaceroleassignment`                     |
-| Synchronize a role                     | `dcim.change_interface`, `interface_profiles.view_rolesync`           |
+| See the role card on an interface      | `interface_profiles.view_interfaceroleassignment`; templates and the config preview also need view on Interface Template and Config Template |
+| Synchronize a role                     | `dcim.change_interface`, `interface_profiles.view_rolesync`, `interface_profiles.view_interfacerole` |
 | View synchronizations                  | `interface_profiles.view_rolesync`                                    |
 | Sync a config template from its data file | `interface_profiles.sync_profileconfigtemplate`                    |
 | Read the [`interface-configs/`](../../reference/api/#interface-configuration) API endpoint | `dcim.view_interface`, and `interface_profiles.view_interfaceroleassignment` to see roles |
 
 Managing roles, groups and templates uses the standard add, change and delete permissions of each object type.
+
+A synchronization only changes interfaces within the user's `dcim.change_interface` constraints. When a role is
+assigned to an interface outside them, the synchronization fails and nothing is changed, also for a dry run.
+
+## Navigation
+
+Like NetBox's own menus, the **Interface Roles** menu only lists the object types the user may view, and offers the
+**Add** and **Import** buttons only with add permission. Users without view permission on any of them do not see the
+menu at all. Buttons and actions elsewhere, such as **Synchronize Role** and the role menu on device interfaces, are
+likewise only shown to users with the permissions to use them.

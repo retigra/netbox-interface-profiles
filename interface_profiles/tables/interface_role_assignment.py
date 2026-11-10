@@ -10,7 +10,9 @@ from netbox.tables import NetBoxTable, columns
 
 from ..models import InterfaceRoleAssignment
 
+# Only offered to users who may change assignments; the menu itself narrows this down per role and interface
 INTERFACE_ROLE_BUTTONS = """
+{% if perms.interface_profiles.add_interfaceroleassignment or perms.interface_profiles.change_interfaceroleassignment or perms.interface_profiles.delete_interfaceroleassignment %}
 <span class="dropdown">
         <button
             type="button"
@@ -29,6 +31,7 @@ INTERFACE_ROLE_BUTTONS = """
             <li><span class="dropdown-item-text text-muted">Loading roles...</span></li>
         </ul>
 </span>
+{% endif %}
 """
 
 # NetBox's interface row buttons hardcode the legacy interfaces tab as return URL; point them back to this tab

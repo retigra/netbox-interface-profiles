@@ -182,6 +182,10 @@ def run_role_sync(sync: RoleSync) -> list[RoleSyncChange]:
     Each change stores the serialized interface before and after synchronization, like NetBox's
     changelog does. A dry run applies the changes inside a transaction that is rolled back, so the
     recorded post-change data is exactly what a committed run would have saved.
+
+    The job's user must be permitted to change every interface the synchronization changes, both before and
+    after the change, as with NetBox's own edit views. Otherwise AbortRequest is raised and nothing is
+    changed. Jobs without a user, i.e. not started by a user, are not restricted.
     """
     assignments = (
         InterfaceRoleAssignment.objects.select_related(
@@ -195,6 +199,16 @@ def run_role_sync(sync: RoleSync) -> list[RoleSyncChange]:
 
     changes: list[RoleSyncChange] = []
 
+    user = cast(Any, sync.job).user
+    changeable = Interface.objects.restrict(user, "change") if user is not None else None
+
+    def check_permission(interface) -> None:
+        if changeable is not None and not changeable.filter(pk=interface.pk).exists():
+            raise AbortRequest(
+                f"You are not permitted to change {interface.device} {interface.name}, which synchronizing "
+                f"role {sync.interface_role} would change."
+            )
+
     with transaction.atomic():
         for assignment in assignments:
             template = _get_matching_template(assignment)
@@ -206,8 +220,10 @@ def run_role_sync(sync: RoleSync) -> list[RoleSyncChange]:
             if not diff:
                 continue
 
+            check_permission(interface)
             prechange_data = interface.serialize_object()
             _apply_diff(interface, diff, sync.interface_role)
+            check_permission(interface)
             change = RoleSyncChange(
                 sync=sync,
                 interface=interface,

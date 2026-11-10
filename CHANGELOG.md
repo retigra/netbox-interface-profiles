@@ -6,6 +6,24 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- The **Interface Roles** menu only shows the items a user may view, and the
+  Add and Import buttons only to users who may add those objects. The menu is
+  hidden entirely from users without any of these permissions.
+- The **Synchronize Role** button is only shown to users who may synchronize,
+  and the related template tables on a role only to users who may view them.
+- The interface page only shows the role card to users who may view the
+  interface's role assignment, and only lists the templates, and renders the
+  config preview, they may view.
+- The role button on each row of the device **Interface Roles** tab is only
+  shown to users who may add, change or delete role assignments.
+- Assigning roles from the device tab and the role menu, and synchronizing a
+  role, require view permission on that interface role.
+- Synchronizing a role is rejected when it would change an interface outside
+  the user's `dcim.change_interface` constraints, instead of changing every
+  interface with the role.
+
 ## [0.1.0] - 2026-11-04
 
 First public release, for NetBox 4.7.

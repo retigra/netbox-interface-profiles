@@ -46,9 +46,10 @@ class BulkAssignInterfaceRole(InterfaceRoleAssignmentAction):
 
     @classmethod
     def get_context(cls, context, obj):
-        form = DeviceBulkAssignRoleForm(device=context["object"])
+        user = context["request"].user
+        form = DeviceBulkAssignRoleForm(device=context["object"], user=user)
         return {
-            "roles": restrict_assignable_roles(form.fields["interface_role"].queryset, context["request"].user),
+            "roles": restrict_assignable_roles(form.fields["interface_role"].queryset, user),
         }
 
 

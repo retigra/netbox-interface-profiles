@@ -10,6 +10,8 @@ from django.test import Client
 from django.urls import reverse
 from django.utils.html import escape
 from ipam.models import VRF
+from users.models import ObjectPermission
+from utilities.permissions import resolve_permission_type
 
 from ..models import (
     InterfaceRole,
@@ -21,6 +23,36 @@ from ..models import (
 from ..tables.interface_role_assignment import DEVICE_INTERFACE_BUTTONS
 from ..testing import PluginViewTestCase
 from ..testing.utils import create_tags, disable_warnings, get_random_string
+
+
+class NavigationMenuTestCase(PluginViewTestCase):
+    """The plugin menu only shows the items and buttons the user may use."""
+
+    MODELS = ("rolegroup", "interfacerole", "interfaceroleassignment", "interfacetemplate", "profileconfigtemplate")
+
+    def get_menu_links(self) -> set[str]:
+        # The navigation menu is rendered on every page
+        response = self.client.get(reverse("home"))
+        self.assertHttpStatus(response, 200)
+        return set(re.findall(r'href="(/plugins/interface-profiles/[^"]*)"', response.content.decode()))
+
+    def url(self, name: str) -> str:
+        return reverse(f"plugins:interface_profiles:{name}")
+
+    def test_menu_hidden_without_permissions(self):
+        self.assertEqual(self.get_menu_links(), set())
+
+    def test_menu_lists_viewable_items_without_buttons(self):
+        self.add_permissions("interface_profiles.view_interfacerole", "interface_profiles.view_rolesync")
+
+        self.assertEqual(self.get_menu_links(), {self.url("interfacerole_list"), self.url("rolesync_list")})
+
+    def test_menu_offers_add_and_import_with_add_permission(self):
+        for model in self.MODELS:
+            self.add_permissions(f"interface_profiles.view_{model}", f"interface_profiles.add_{model}")
+
+        expected = {self.url(f"{model}_{view}") for model in self.MODELS for view in ("list", "add", "import")}
+        self.assertEqual(self.get_menu_links(), expected)
 
 
 class InterfaceRoleViewTestCase(PluginViewTestCase):
@@ -80,6 +112,31 @@ class InterfaceRoleViewTestCase(PluginViewTestCase):
         self.assertContains(response, "Related Config Templates")
         self.assertContains(response, reverse("plugins:interface_profiles:interfacetemplate_list"))
         self.assertContains(response, reverse("plugins:interface_profiles:profileconfigtemplate_list"))
+
+    def test_interface_role_detail_hides_sync_and_related_templates_without_permission(self):
+        self.add_permissions("interface_profiles.view_interfacerole")
+
+        response = self.client.get(self.role.get_absolute_url())
+
+        self.assertHttpStatus(response, 200)
+        self.assertNotContains(
+            response, reverse("plugins:interface_profiles:interfacerole_sync", kwargs={"pk": self.role.pk})
+        )
+        self.assertNotContains(response, "Related Interface Templates")
+        self.assertNotContains(response, "Related Config Templates")
+
+    def test_interface_role_detail_offers_sync_with_permission(self):
+        self.add_permissions(
+            "interface_profiles.view_interfacerole",
+            "interface_profiles.view_rolesync",
+            "dcim.change_interface",
+        )
+
+        response = self.client.get(self.role.get_absolute_url())
+
+        self.assertContains(
+            response, reverse("plugins:interface_profiles:interfacerole_sync", kwargs={"pk": self.role.pk})
+        )
 
     def test_interface_role_detail_embedded_tables_list_related_templates(self):
         """The embedded related-template tables only list templates belonging to the role."""
@@ -409,6 +466,23 @@ class DeviceInterfaceRoleTabViewTestCase(PluginViewTestCase):
         self.assertContains(response, f"return_url={url}")
         self.assertNotContains(response, f"return_url={reverse('dcim:device_interfaces', kwargs={'pk': device_pk})}")
 
+    def test_device_interface_roles_tab_row_role_button_requires_assignment_permission(self):
+        self.add_permissions(
+            "dcim.view_device",
+            "dcim.view_interface",
+            "interface_profiles.view_interfaceroleassignment",
+        )
+        url = reverse("dcim:device_interface_roles", kwargs={"pk": self.interface.device.pk})
+        menu_url = reverse(
+            "plugins:interface_profiles:interfaceroleassignment_htmx_menu",
+            kwargs={"interface_id": self.interface.pk},
+        )
+
+        self.assertNotContains(self.client.get(url), menu_url)
+
+        self.add_permissions("interface_profiles.change_interfaceroleassignment")
+        self.assertContains(self.client.get(url), menu_url)
+
     def test_legacy_interfaces_tab_renders_banner(self):
         self.add_permissions(
             "dcim.view_device",
@@ -444,6 +518,7 @@ class DeviceInterfaceRoleTabViewTestCase(PluginViewTestCase):
             "dcim.view_interface",
             "dcim.change_interface",
             "dcim.delete_interface",
+            "interface_profiles.view_interfacerole",
             "interface_profiles.view_interfaceroleassignment",
             "interface_profiles.add_interfaceroleassignment",
             "interface_profiles.change_interfaceroleassignment",
@@ -482,6 +557,7 @@ class DeviceInterfaceRoleTabViewTestCase(PluginViewTestCase):
         self.add_permissions(
             "dcim.view_device",
             "dcim.view_interface",
+            "interface_profiles.view_interfacerole",
             "interface_profiles.view_interfaceroleassignment",
             "interface_profiles.add_interfaceroleassignment",
             "interface_profiles.change_interfaceroleassignment",
@@ -540,7 +616,11 @@ class DeviceInterfaceRoleTabViewTestCase(PluginViewTestCase):
         self.assertTrue(InterfaceRoleAssignment.objects.filter(interface=self.interface).exists())
 
     def test_htmx_menu_endpoint_lists_roles(self):
-        self.add_permissions("dcim.view_interface", "interface_profiles.view_interfaceroleassignment")
+        self.add_permissions(
+            "dcim.view_interface",
+            "interface_profiles.view_interfacerole",
+            "interface_profiles.view_interfaceroleassignment",
+        )
 
         url = reverse(
             "plugins:interface_profiles:interfaceroleassignment_htmx_menu",
@@ -555,6 +635,7 @@ class DeviceInterfaceRoleTabViewTestCase(PluginViewTestCase):
         """The menu is also rendered outside a form, so its actions must send the CSRF token themselves."""
         self.add_permissions(
             "dcim.view_interface",
+            "interface_profiles.view_interfacerole",
             "interface_profiles.view_interfaceroleassignment",
             "interface_profiles.change_interfaceroleassignment",
         )
@@ -582,7 +663,11 @@ class DeviceInterfaceRoleTabViewTestCase(PluginViewTestCase):
 
     def test_htmx_set_endpoint_assigns_role(self):
         # The interface already has an assignment, so this is a change
-        self.add_permissions("dcim.view_interface", "interface_profiles.change_interfaceroleassignment")
+        self.add_permissions(
+            "dcim.view_interface",
+            "interface_profiles.view_interfacerole",
+            "interface_profiles.change_interfaceroleassignment",
+        )
         new_role = InterfaceRole.objects.create(name="New HTMX Role", description="")
 
         url = reverse(
@@ -598,6 +683,31 @@ class DeviceInterfaceRoleTabViewTestCase(PluginViewTestCase):
         assignment = InterfaceRoleAssignment.objects.get(interface=self.interface)
         self.assertEqual(assignment.interface_role, new_role)
 
+    def test_htmx_set_endpoint_requires_role_view_permission(self):
+        self.add_permissions("dcim.view_interface", "interface_profiles.change_interfaceroleassignment")
+        new_role = InterfaceRole.objects.create(name="Hidden HTMX Role", description="")
+
+        url = reverse(
+            "plugins:interface_profiles:interfaceroleassignment_htmx_set",
+            kwargs={"interface_id": self.interface.pk, "role_id": new_role.pk},
+        )
+        with disable_warnings("django.request"):
+            response = self.client.post(url)
+
+        self.assertHttpStatus(response, 404)
+        self.assertEqual(InterfaceRoleAssignment.objects.get(interface=self.interface).interface_role, self.role)
+
+    def test_htmx_menu_lists_only_viewable_roles(self):
+        self.add_permissions("dcim.view_interface", "interface_profiles.view_interfaceroleassignment")
+        hidden_role = InterfaceRole.objects.create(name="Hidden Menu Role", description="")
+
+        response = self.get_htmx_menu()
+
+        self.assertHttpStatus(response, 200)
+        # The current role stays listed, as the user may view its assignment
+        self.assertContains(response, self.role.name)
+        self.assertNotContains(response, hidden_role.name)
+
     def test_htmx_remove_endpoint_removes_assignment(self):
         self.add_permissions("interface_profiles.delete_interfaceroleassignment")
 
@@ -612,7 +722,11 @@ class DeviceInterfaceRoleTabViewTestCase(PluginViewTestCase):
 
     def test_htmx_menu_filters_roles_by_device_role_scope(self):
         """Ensure role-scoped roles are filtered for the device in HTMX menu."""
-        self.add_permissions("dcim.view_interface", "interface_profiles.view_interfaceroleassignment")
+        self.add_permissions(
+            "dcim.view_interface",
+            "interface_profiles.view_interfacerole",
+            "interface_profiles.view_interfaceroleassignment",
+        )
 
         matching_role = InterfaceRole.objects.create(name="Role Matched", description="")
         matching_role.device_roles.add(self.interface.device.role)
@@ -650,7 +764,11 @@ class DeviceInterfaceRoleTabViewTestCase(PluginViewTestCase):
 
     def test_htmx_menu_filters_roles_by_config_template_scope(self):
         """Ensure the HTMX menu only lists roles with a config template in scope, or without config templates."""
-        self.add_permissions("dcim.view_interface", "interface_profiles.view_interfaceroleassignment")
+        self.add_permissions(
+            "dcim.view_interface",
+            "interface_profiles.view_interfacerole",
+            "interface_profiles.view_interfaceroleassignment",
+        )
 
         device = self.interface.device
         platform = device.platform = Platform.objects.create(name="Menu Platform", slug="menu-platform")
@@ -687,7 +805,11 @@ class DeviceInterfaceRoleTabViewTestCase(PluginViewTestCase):
             self.assertNotContains(response, role.name)
 
     def test_htmx_menu_without_platform_hides_roles_with_config_templates(self):
-        self.add_permissions("dcim.view_interface", "interface_profiles.view_interfaceroleassignment")
+        self.add_permissions(
+            "dcim.view_interface",
+            "interface_profiles.view_interfacerole",
+            "interface_profiles.view_interfaceroleassignment",
+        )
         platform = Platform.objects.create(name="Menu Platform", slug="menu-platform")
         templated_role = self.create_role_with_template("With Template", platform)
         untemplated_role = InterfaceRole.objects.create(name="Without Template", description="")
@@ -809,13 +931,53 @@ class InterfaceDetailCardTestCase(PluginViewTestCase):
             ),
         )
 
+    def test_interface_detail_card_hidden_without_assignment_view_permission(self):
+        self.add_permissions("dcim.view_interface")
+
+        response = self.client.get(reverse("dcim:interface", kwargs={"pk": self.interface.pk}))
+
+        self.assertHttpStatus(response, 200)
+        self.assertNotContains(response, "Interface Role Automation")
+
+    def test_interface_detail_card_hidden_for_assignment_outside_view_constraints(self):
+        self.add_permissions("dcim.view_interface")
+        object_type, _ = resolve_permission_type("interface_profiles.view_interfaceroleassignment")
+        permission = ObjectPermission.objects.create(
+            name="Other role assignments", actions=["view"], constraints={"interface_role__name": "Other"}
+        )
+        permission.users.add(self.user)
+        permission.object_types.add(object_type)
+
+        response = self.client.get(reverse("dcim:interface", kwargs={"pk": self.interface.pk}))
+
+        self.assertHttpStatus(response, 200)
+        self.assertNotContains(response, "Interface Role Automation")
+        self.assertNotContains(response, self.role.name)
+
+    def test_interface_detail_card_hides_templates_and_preview_without_view_permission(self):
+        self.add_permissions(
+            "dcim.view_interface",
+            "interface_profiles.view_interfacerole",
+            "interface_profiles.view_interfaceroleassignment",
+        )
+
+        response = self.client.get(reverse("dcim:interface", kwargs={"pk": self.interface.pk}))
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, "Interface Role Automation")
+        self.assertContains(response, self.role.name)
+        self.assertNotContains(response, self.interface_template.name)
+        self.assertNotContains(response, self.config_template.name)
+        self.assertNotContains(response, "Assigned Config Preview")
+        self.assertNotContains(response, f"description {self.role.name}")
+
     def test_interface_detail_card_hides_assign_without_add_permission(self):
         interface = Interface.objects.create(
             device=self.device,
             name="eth1",
             type=InterfaceTypeChoices.TYPE_1GE_FIXED,
         )
-        self.add_permissions("dcim.view_interface")
+        self.add_permissions("dcim.view_interface", "interface_profiles.view_interfaceroleassignment")
 
         response = self.client.get(reverse("dcim:interface", kwargs={"pk": interface.pk}))
 
@@ -846,8 +1008,21 @@ class InterfaceRoleSyncViewTestCase(PluginViewTestCase):
             response = self.client.get(url)
             self.assertHttpStatus(response, 403)
 
-    def test_sync_view_queues_job(self):
+    def test_sync_view_requires_role_view_permission(self):
         self.add_permissions("dcim.change_interface", "interface_profiles.view_rolesync")
+
+        url = reverse("plugins:interface_profiles:interfacerole_sync", kwargs={"pk": self.role.pk})
+        with disable_warnings("django.request"):
+            response = self.client.post(url, {"dry_run": "on"})
+
+        self.assertHttpStatus(response, 404)
+
+    def test_sync_view_queues_job(self):
+        self.add_permissions(
+            "dcim.change_interface",
+            "interface_profiles.view_interfacerole",
+            "interface_profiles.view_rolesync",
+        )
 
         url = reverse(
             "plugins:interface_profiles:interfacerole_sync",

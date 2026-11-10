@@ -160,6 +160,7 @@ class DeviceInterfaceRoleTabView(DeviceComponentsView):
 
             assign_form = forms.DeviceBulkAssignRoleForm(
                 device=device,
+                user=request.user,
                 data={"interface_role": request.POST.get("_assign")},
             )
             role = assign_form.cleaned_data["interface_role"] if assign_form.is_valid() else None
@@ -218,9 +219,9 @@ class DeviceInterfaceRoleTabView(DeviceComponentsView):
         return redirect(return_url)
 
 
-def _get_applicable_roles(interface: Interface):
+def _get_applicable_roles(interface: Interface, user):
     """
-    Return roles applicable to an interface.
+    Return roles applicable to an interface that the user may view.
 
     Filters by:
     1. Config template scope (if role has config templates, see ProfileConfigTemplate.objects.in_scope())
@@ -230,7 +231,7 @@ def _get_applicable_roles(interface: Interface):
     config_templates = models.ProfileConfigTemplate.objects.all()
 
     # Roles without config templates are unrestricted, others need a config template in scope
-    roles = models.InterfaceRole.objects.filter(
+    roles = models.InterfaceRole.objects.restrict(user, "view").filter(
         ~Q(pk__in=config_templates.values("interface_role"))
         | Q(pk__in=config_templates.in_scope(interface).values("interface_role"))
     )
@@ -259,7 +260,7 @@ class InterfaceRoleAssignmentMenuHTMXView(View):
             pk=interface_id,
         )
 
-        roles = _get_applicable_roles(interface)
+        roles = _get_applicable_roles(interface, request.user)
         assignment = getattr(interface, "role_assignment", None)
         current_role = getattr(assignment, "interface_role", None)
 
@@ -302,7 +303,7 @@ class InterfaceRoleAssignmentSetHTMXView(View):
             return HttpResponseForbidden()
 
         interface = get_object_or_404(Interface.objects.restrict(request.user, "view"), pk=interface_id)
-        role = get_object_or_404(models.InterfaceRole.objects.all(), pk=role_id)
+        role = get_object_or_404(models.InterfaceRole.objects.restrict(request.user, "view"), pk=role_id)
 
         try:
             assign_role(request.user, interface, role)

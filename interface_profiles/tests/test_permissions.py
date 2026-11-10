@@ -113,7 +113,11 @@ class HTMXAssignmentPermissionTestCase(RoleGroupPermissionMixin, PluginViewTestC
 
     def setUp(self):
         super().setUp()
-        self.add_permissions("dcim.view_interface", "interface_profiles.view_interfaceroleassignment")
+        self.add_permissions(
+            "dcim.view_interface",
+            "interface_profiles.view_interfacerole",
+            "interface_profiles.view_interfaceroleassignment",
+        )
 
     def set_url(self, interface, role):
         return reverse(

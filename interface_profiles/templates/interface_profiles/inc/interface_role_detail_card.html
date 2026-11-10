@@ -38,6 +38,7 @@
         <th scope="row">Role Group</th>
         <td>{{ role.group|linkify|placeholder }}</td>
       </tr>
+      {% if perms.interface_profiles.view_interfacetemplate %}
       <tr>
         <th scope="row">Matching Interface Templates</th>
         <td>
@@ -57,7 +58,9 @@
           {% endif %}
         </td>
       </tr>
+      {% endif %}
 
+      {% if perms.interface_profiles.view_profileconfigtemplate %}
       <tr>
         <th scope="row">Matching Config Templates</th>
         <td>
@@ -84,6 +87,7 @@
           {% endif %}
         </td>
       </tr>
+      {% endif %}
     </table>
   {% else %}
     <div class="card-body text-muted">
