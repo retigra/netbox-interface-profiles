@@ -17,6 +17,7 @@ from utilities.exceptions import AbortRequest
 
 from ..forms import InterfaceTemplateForm, ProfileConfigTemplateForm
 from ..models import InterfaceRole, InterfaceRoleAssignment, InterfaceTemplate, ProfileConfigTemplate, RoleGroup
+from ..services import get_matching_templates
 from ..testing import PluginModelTestCase
 from ..testing.utils import create_tags, get_random_string
 
@@ -422,6 +423,29 @@ class InterfaceRoleAssignmentSignalTestCase(PluginModelTestCase):
         self.interface.refresh_from_db()
         self.assertTrue(self.interface.enabled)
         self.assertEqual(self.interface.speed, 1000)
+
+    def test_parent_site_group_template_matches_child_group_sites(self):
+        """Templates of parent site groups match, the nearest group first, after the site and before global."""
+        parent = SiteGroup.objects.create(name="SG-Signal-Parent", slug="sg-signal-parent")
+        root = SiteGroup.objects.create(name="SG-Signal-Root", slug="sg-signal-root")
+        parent.parent = root
+        parent.save()
+        self.site_group.parent = parent
+        self.site_group.save()
+        unrelated = SiteGroup.objects.create(name="SG-Signal-Other", slug="sg-signal-other", parent=root)
+
+        global_template = InterfaceTemplate.objects.create(interface_role=self.role, name="Global")
+        root_template = InterfaceTemplate.objects.create(interface_role=self.role, name="Root", scope=root)
+        InterfaceTemplate.objects.create(interface_role=self.role, name="Other", scope=unrelated)
+        parent_template = InterfaceTemplate.objects.create(interface_role=self.role, name="Parent", scope=parent)
+        group_template = InterfaceTemplate.objects.create(interface_role=self.role, name="Group", scope=self.site_group)
+        site_template = InterfaceTemplate.objects.create(interface_role=self.role, name="Site", scope=self.site)
+
+        self.interface.refresh_from_db()
+        self.assertEqual(
+            list(get_matching_templates(self.interface, self.role)),
+            [site_template, group_template, parent_template, root_template, global_template],
+        )
 
     def _configure_interface(self):
         self.interface.speed = 1000000

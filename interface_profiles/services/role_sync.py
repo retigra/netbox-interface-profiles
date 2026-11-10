@@ -25,10 +25,17 @@ SAVED_INTERFACE_FIELDS = (*TEMPLATE_INTERFACE_FIELDS.values(), "untagged_vlan", 
 def get_matching_templates(interface, interface_role) -> QuerySet[InterfaceTemplate]:
     """Return the interface templates of a role that match an interface, the one that applies first.
 
-    Priority order: site-scoped > site-group-scoped > global (no scope).
+    Priority order: site-scoped > site-group-scoped > global (no scope). Templates scoped to a site group also match
+    sites in its child groups; the template of the nearest site group applies first.
     """
     site = interface.device.site
-    site_group_id = getattr(site, "group_id", None)
+    site_group = getattr(site, "group", None)
+    # The site's own group first, followed by its parent groups up to the root
+    site_group_ids = (
+        list(site_group.get_ancestors(ascending=True, include_self=True).values_list("pk", flat=True))
+        if site_group
+        else []
+    )
 
     site_ct = ContentType.objects.get_for_model(Site)
     site_group_ct = ContentType.objects.get_for_model(SiteGroup)
@@ -36,8 +43,8 @@ def get_matching_templates(interface, interface_role) -> QuerySet[InterfaceTempl
     scope_q = Q(scope_type__isnull=True)  # global
     if site:
         scope_q |= Q(scope_type=site_ct, scope_id=site.pk)
-    if site_group_id:
-        scope_q |= Q(scope_type=site_group_ct, scope_id=site_group_id)
+    if site_group_ids:
+        scope_q |= Q(scope_type=site_group_ct, scope_id__in=site_group_ids)
 
     return (
         InterfaceTemplate.objects.filter(interface_role=interface_role)
@@ -45,8 +52,11 @@ def get_matching_templates(interface, interface_role) -> QuerySet[InterfaceTempl
         .annotate(
             scope_priority=Case(
                 When(scope_type=site_ct, then=Value(0)),
-                When(scope_type=site_group_ct, then=Value(1)),
-                default=Value(2),
+                *(
+                    When(scope_type=site_group_ct, scope_id=group_id, then=Value(depth))
+                    for depth, group_id in enumerate(site_group_ids, start=1)
+                ),
+                default=Value(len(site_group_ids) + 1),
                 output_field=IntegerField(),
             )
         )
@@ -185,7 +195,7 @@ def run_role_sync(sync: RoleSync) -> list[RoleSyncChange]:
     """
     assignments = (
         InterfaceRoleAssignment.objects.select_related(
-            "interface__device__site",
+            "interface__device__site__group",
             "interface_role",
         )
         .prefetch_related("interface__tagged_vlans")

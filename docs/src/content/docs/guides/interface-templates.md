@@ -57,7 +57,7 @@ A template applies globally, to a **site group** or to a **site**. When a role h
 specific one that matches the interface's site is used:
 
 1. a template scoped to the device's site,
-2. a template scoped to the site's site group,
+2. a template scoped to the site's site group, or to one of its parent groups, the nearest group first,
 3. a template without a scope.
 
 Only one template is applied to an interface; attributes are not merged between templates. A role without a
